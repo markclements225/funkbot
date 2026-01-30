@@ -46,6 +46,11 @@ function savePostedHomeRuns() {
 // Post message to GroupMe
 async function postToGroupMe(message, imageUrl = null) {
   try {
+    console.log('\n📤 Posting to GroupMe...');
+    console.log('Message:', message);
+    console.log('Image URL:', imageUrl);
+    console.log('Bot ID:', GROUPME_BOT_ID);
+    
     const payload = {
       bot_id: GROUPME_BOT_ID,
       text: message
@@ -64,9 +69,18 @@ async function postToGroupMe(message, imageUrl = null) {
       body: JSON.stringify(payload)
     });
 
-    return response.status === 202;
+    console.log('GroupMe response status:', response.status);
+    
+    if (response.status === 202) {
+      console.log('✅ Successfully posted to GroupMe!');
+      return true;
+    } else {
+      const text = await response.text();
+      console.error('❌ GroupMe post failed:', response.status, text);
+      return false;
+    }
   } catch (error) {
-    console.error('Error posting to GroupMe:', error);
+    console.error('❌ Error posting to GroupMe:', error);
     return false;
   }
 }
