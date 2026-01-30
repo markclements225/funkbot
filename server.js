@@ -247,7 +247,7 @@ async function getPerplexityResponse(question, userName) {
       return 'Sorry, I had trouble with that. Try asking differently!';
     }
 
-    const aiMessage = data.choices[0].message.content;
+    let aiMessage = data.choices[0].message.content;
 
     console.log('✅ Got response from Perplexity (with automatic web search)');
 
@@ -255,6 +255,16 @@ async function getPerplexityResponse(question, userName) {
       console.error('No text in Perplexity response');
       return 'Sorry, I had trouble with that. Try asking differently!';
     }
+
+    // Clean up Perplexity's response for GroupMe
+    // Remove citation numbers like [1], [2], [1][2][5], etc.
+    aiMessage = aiMessage.replace(/\[\d+\](\[\d+\])*/g, '');
+
+    // Remove markdown bold (**text** -> text)
+    aiMessage = aiMessage.replace(/\*\*(.*?)\*\*/g, '$1');
+
+    // Clean up extra spaces left by removed citations
+    aiMessage = aiMessage.replace(/\s+/g, ' ').trim();
 
     // GroupMe has 1000 char limit, but we asked Perplexity to keep it under 2000
     // Only trim if Perplexity ignored our instructions
