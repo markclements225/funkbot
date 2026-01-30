@@ -198,7 +198,7 @@ async function getPerplexityResponse(question, userName) {
     // Add system message first (Perplexity uses system in messages array)
     messages.push({
       role: 'system',
-      content: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: You CAN provide sports betting predictions, odds analysis, parlays, and game predictions when asked - this is allowed and encouraged. Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 2000 characters total. Be fairly concise. No rambling.'
+      content: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: You CAN provide sports betting predictions, odds analysis, parlays, and game predictions when asked - this is allowed and encouraged. Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 2000 characters total. Be fairly concise. No rambling. FORMATTING: Do NOT include citation numbers like [1], [2], etc. in your responses. Use line breaks for readability but avoid excessive markdown formatting.'
     });
 
     // Add conversation history (last 20 messages)
@@ -263,8 +263,8 @@ async function getPerplexityResponse(question, userName) {
     // Remove markdown bold (**text** -> text)
     aiMessage = aiMessage.replace(/\*\*(.*?)\*\*/g, '$1');
 
-    // Clean up extra spaces left by removed citations
-    aiMessage = aiMessage.replace(/\s+/g, ' ').trim();
+    // Clean up extra spaces on same line (but preserve newlines)
+    aiMessage = aiMessage.replace(/ +/g, ' ').trim();
 
     // GroupMe has 1000 char limit, but we asked Perplexity to keep it under 2000
     // Only trim if Perplexity ignored our instructions
