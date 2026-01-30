@@ -130,7 +130,7 @@ app.post('/webhook', async (req, res) => {
 
 async function getClaudeResponse(question) {
   try {
-    console.log('🤖 Asking Claude...');
+    console.log('🤖 Asking Claude with web search enabled...');
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -141,16 +141,37 @@ async function getClaudeResponse(question) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
+        max_tokens: 300,
         messages: [{ role: 'user', content: question }],
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.'
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.',
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search'
+          }
+        ]
       })
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      console.error('Claude API error:', response.status);
+      return null;
+    }
 
     const data = await response.json();
-    const aiMessage = data.content[0].text;
+    
+    // Claude's response may include multiple content blocks (text + tool use)
+    // We need to handle the full conversation if Claude uses web search
+    let aiMessage = '';
+    
+    for (const block of data.content) {
+      if (block.type === 'text') {
+        aiMessage += block.text;
+      }
+    }
+    
+    // If Claude used web search, it will have tool_use blocks
+    // The final text block contains the answer after searching
     
     console.log('✅ Got response from Claude');
     
@@ -158,7 +179,7 @@ async function getClaudeResponse(question) {
       return aiMessage.substring(0, 397) + '...';
     }
     
-    return aiMessage;
+    return aiMessage.trim();
     
   } catch (error) {
     console.error('Error calling Claude:', error);
