@@ -230,7 +230,7 @@ async function getPerplexityResponse(question, userName) {
         messages: messages,
         max_tokens: 500,
         temperature: 0.7,
-        search_context: 'low' // Use low context for cheaper requests
+        search_recency_filter: 'day' // Get recent results (valid parameter)
       })
     });
 
