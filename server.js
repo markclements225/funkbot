@@ -222,9 +222,9 @@ async function getClaudeResponse(question, userName) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300, // Roughly 200-600 characters
+        max_tokens: 500, // Roughly 200-600 characters
         messages: messages,
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 600 characters total. Be concise - you only have 600 characters max, so get straight to the point. No rambling.',
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 600 characters total. Be fairly concise. No rambling.',
         tools: [
           {
             type: 'web_search_20250305',
@@ -268,7 +268,7 @@ async function getClaudeResponse(question, userName) {
     
     // GroupMe has 1000 char limit, but we asked Claude to keep it under 600
     // Only trim if Claude ignored our instructions
-    if (aiMessage.length > 900) {
+    if (aiMessage.length > 2000) {
       console.warn('⚠️ Response too long, trimming:', aiMessage.length, 'chars');
       return aiMessage.substring(0, 897) + '...';
     }
