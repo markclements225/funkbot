@@ -13,6 +13,14 @@ const LSU_TEAM_ID = process.env.LSU_TEAM_ID || '10291565';
 const POSTED_HRS_FILE = './posted_home_runs.json';
 let postedHomeRuns = new Set();
 
+// Store recent conversation history (last 10 messages)
+const conversationHistory = [];
+const MAX_HISTORY = 10;
+
+// Home run monitoring state
+let homeRunMonitoringActive = false;
+let monitoringInterval = null;
+
 const app = express();
 app.use(express.json());
 
@@ -126,7 +134,20 @@ app.post('/webhook', async (req, res) => {
   const text = message.text || '';
   const mentionsBot = text.toLowerCase().includes('@funkbot');
   
-  if (!mentionsBot) return;
+  if (!mentionsBot) {
+    // Store non-bot messages for context
+    conversationHistory.push({
+      role: 'user',
+      content: `${message.name}: ${text}`,
+      timestamp: Date.now()
+    });
+    
+    // Keep only last MAX_HISTORY messages
+    if (conversationHistory.length > MAX_HISTORY) {
+      conversationHistory.shift();
+    }
+    return;
+  }
   
   console.log('🎯 FunkBot mentioned!');
   
@@ -139,20 +160,59 @@ app.post('/webhook', async (req, res) => {
   
   console.log(`❓ Question: "${question}"`);
   
-  const aiResponse = await getClaudeResponse(question);
+  // Add this question to history
+  conversationHistory.push({
+    role: 'user',
+    content: `${message.name}: ${question}`,
+    timestamp: Date.now()
+  });
+  
+  const aiResponse = await getClaudeResponse(question, message.name);
   
   if (aiResponse) {
     await postToGroupMe(aiResponse);
+    
+    // Add bot response to history
+    conversationHistory.push({
+      role: 'assistant',
+      content: aiResponse,
+      timestamp: Date.now()
+    });
+    
+    // Keep only last MAX_HISTORY messages
+    if (conversationHistory.length > MAX_HISTORY) {
+      conversationHistory.shift();
+    }
   } else {
     await postToGroupMe("Sorry, I had trouble processing that. Try again!");
   }
 });
 
-async function getClaudeResponse(question) {
+async function getClaudeResponse(question, userName) {
   try {
-    console.log('🤖 Asking Claude with web search...');
+    console.log('🤖 Asking Claude with web search and conversation context...');
     
-    // Initial request with web search tool
+    // Build messages array with conversation history
+    const messages = [];
+    
+    // Add conversation history (last 10 messages)
+    if (conversationHistory.length > 0) {
+      const contextSummary = conversationHistory
+        .slice(-10)
+        .map(msg => msg.content)
+        .join('\n');
+      
+      messages.push({
+        role: 'user',
+        content: `Recent conversation context:\n${contextSummary}\n\nCurrent question from ${userName}: ${question}`
+      });
+    } else {
+      messages.push({
+        role: 'user',
+        content: question
+      });
+    }
+    
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -163,8 +223,8 @@ async function getClaudeResponse(question) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 500,
-        messages: [{ role: 'user', content: question }],
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.',
+        messages: messages,
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point. You can reference recent conversation context if relevant.',
         tools: [
           {
             type: 'web_search_20250305',
@@ -182,7 +242,6 @@ async function getClaudeResponse(question) {
 
     const data = await response.json();
     
-    // Extract the response text
     let aiMessage = '';
     let usedSearch = false;
     
@@ -220,6 +279,36 @@ async function getClaudeResponse(question) {
 }
 
 // ==================== HOME RUN DETECTOR ====================
+
+// Start home run monitoring
+function startHomeRunMonitoring() {
+  if (homeRunMonitoringActive) {
+    console.log('⚠️ Home run monitoring already active');
+    return;
+  }
+  
+  console.log('🚀 Starting home run monitoring (checks every minute)');
+  homeRunMonitoringActive = true;
+  
+  // Check immediately
+  checkForHomeRuns();
+  
+  // Then check every minute
+  monitoringInterval = setInterval(checkForHomeRuns, 60 * 1000);
+}
+
+// Stop home run monitoring
+function stopHomeRunMonitoring() {
+  if (!homeRunMonitoringActive) return;
+  
+  console.log('🛑 Stopping home run monitoring');
+  homeRunMonitoringActive = false;
+  
+  if (monitoringInterval) {
+    clearInterval(monitoringInterval);
+    monitoringInterval = null;
+  }
+}
 
 async function getLSUGames() {
   try {
@@ -271,18 +360,30 @@ async function getMatchDetails(matchId) {
 
 async function checkForHomeRuns() {
   try {
+    if (!homeRunMonitoringActive) return;
+    
     console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs...`);
     
     const games = await getLSUGames();
     
     if (games.length === 0) {
-      console.log('No LSU games today.');
+      console.log('No LSU games in progress.');
       return;
     }
 
+    let allGamesFinished = true;
+
     for (const game of games) {
-      if (game.state.description === 'Scheduled' || game.state.description === 'Postponed') {
+      const status = game.state.description;
+      
+      // Skip scheduled/postponed games
+      if (status === 'Scheduled' || status === 'Postponed') {
         continue;
+      }
+      
+      // Check if game is still in progress
+      if (status !== 'Finished') {
+        allGamesFinished = false;
       }
 
       const matchDetails = await getMatchDetails(game.id);
@@ -301,12 +402,10 @@ async function checkForHomeRuns() {
           if (!postedHomeRuns.has(playId)) {
             console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
             
-            // Try to upload image, but continue if it fails
             const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
             if (imageUrl) {
               await postToGroupMe('', imageUrl);
             } else {
-              // Post text if image fails
               await postToGroupMe('🎉 LSU HOME RUN! 🟣🟡');
             }
             
@@ -316,6 +415,13 @@ async function checkForHomeRuns() {
         }
       }
     }
+    
+    // If all games are finished, stop monitoring
+    if (allGamesFinished && games.length > 0) {
+      console.log('✅ All LSU games finished! Stopping home run monitoring.');
+      stopHomeRunMonitoring();
+    }
+    
   } catch (error) {
     console.error('Error in checkForHomeRuns:', error);
   }
@@ -325,15 +431,53 @@ async function checkForHomeRuns() {
 
 async function checkForGameToday() {
   const today = new Date().toISOString().split('T')[0];
-  console.log(`\n[${new Date().toLocaleString()}] 📅 Checking for LSU games on ${today}...`);
+  console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${today}...`);
   
   const games = await getLSUGames();
   
-  if (games.length > 0) {
-    console.log(`✅ Found ${games.length} LSU game(s) today!`);
-    // Home run checker already running via cron
-  } else {
+  if (games.length === 0) {
     console.log('❌ No LSU games today.');
+    return;
+  }
+  
+  console.log(`✅ Found ${games.length} LSU game(s) today!`);
+  
+  // Get first game time
+  const firstGame = games[0];
+  const gameTime = new Date(firstGame.date);
+  const now = new Date();
+  
+  const opponent = firstGame.homeTeam.id === parseInt(LSU_TEAM_ID)
+    ? firstGame.awayTeam.displayName
+    : firstGame.homeTeam.displayName;
+  
+  console.log(`🏟️ LSU vs ${opponent}`);
+  console.log(`⏰ First pitch: ${gameTime.toLocaleString()}`);
+  
+  // Calculate when to start monitoring (1 hour before first pitch)
+  const monitorStartTime = new Date(gameTime.getTime() - 60 * 60 * 1000);
+  
+  if (now < monitorStartTime) {
+    // Schedule monitoring to start later
+    const msUntilStart = monitorStartTime.getTime() - now.getTime();
+    const minutesUntil = Math.round(msUntilStart / 1000 / 60);
+    
+    console.log(`⏳ Will start monitoring in ${minutesUntil} minutes (1 hour before first pitch)`);
+    
+    setTimeout(() => {
+      console.log('🎯 Game time! Starting home run monitoring...');
+      startHomeRunMonitoring();
+    }, msUntilStart);
+    
+  } else if (now < gameTime) {
+    // We're within the 1-hour window before the game
+    console.log('🎯 Game starting soon! Starting home run monitoring now...');
+    startHomeRunMonitoring();
+    
+  } else {
+    // Game should have already started
+    console.log('🎯 Game in progress! Starting home run monitoring now...');
+    startHomeRunMonitoring();
   }
 }
 
@@ -356,7 +500,6 @@ async function startServer() {
       console.log(`✅ Server listening on port ${PORT}`);
       console.log(`📡 Webhook endpoint: /webhook\n`);
       
-      // Now do everything else AFTER the server is listening
       console.log('Checking environment variables...');
       const required = ['GROUPME_BOT_ID', 'ANTHROPIC_API_KEY', 'RAPIDAPI_KEY'];
       const missing = required.filter(key => !process.env[key]);
@@ -370,16 +513,18 @@ async function startServer() {
       // Load home run tracking data
       loadPostedHomeRuns();
       
-      // Check for home runs every minute (only during games)
-      cron.schedule('* * * * *', checkForHomeRuns);
-      console.log('✅ Home run detector: Running every minute');
+      // Check for games daily at 8 AM CST
+      cron.schedule('0 8 * * *', checkForGameToday);
+      console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
       
-      // Check for games daily at 6 AM
-      cron.schedule('0 6 * * *', checkForGameToday);
-      console.log('✅ Game scheduler: Running daily at 6:00 AM CST');
+      // Run initial game check on startup
+      await checkForGameToday();
       
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
+      console.log('   🤖 FunkBot AI: Ready (with 10-message memory)');
+      console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
+      console.log('   📅 Game Scheduler: Running daily at 8 AM');
       console.log('='.repeat(60) + '\n');
     });
   } catch (error) {
