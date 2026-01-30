@@ -136,7 +136,7 @@ app.post('/webhook', async (req, res) => {
 
 async function getClaudeResponse(question) {
   try {
-    console.log('🤖 Asking Claude with web search enabled...');
+    console.log('🤖 Asking Claude...');
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -149,13 +149,7 @@ async function getClaudeResponse(question) {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 300,
         messages: [{ role: 'user', content: question }],
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.',
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search'
-          }
-        ]
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.'
       })
     });
 
@@ -166,26 +160,7 @@ async function getClaudeResponse(question) {
     }
 
     const data = await response.json();
-    console.log('📦 Claude response:', JSON.stringify(data, null, 2));
-    
-    // Claude's response may include multiple content blocks (text + tool use)
-    let aiMessage = '';
-    
-    if (!data.content || data.content.length === 0) {
-      console.error('No content in Claude response');
-      return null;
-    }
-    
-    for (const block of data.content) {
-      if (block.type === 'text') {
-        aiMessage += block.text;
-      }
-    }
-    
-    if (!aiMessage) {
-      console.error('No text found in Claude response');
-      return 'Sorry, I got a weird response. Try asking differently!';
-    }
+    const aiMessage = data.content[0].text;
     
     console.log('✅ Got response from Claude:', aiMessage);
     
