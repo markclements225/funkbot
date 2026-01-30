@@ -32,11 +32,10 @@ app.post('/webhook', async (req, res) => {
   console.log(`Text: ${message.text}`);
   console.log('='.repeat(60));
   
-  // Check if bot is mentioned
-  const mentionsBot = message.text && (
-    message.text.toLowerCase().includes('@funkbot') ||
-    message.text.toLowerCase().includes('funkbot')
-  );
+  // Check if bot is mentioned (works with @mentions and text)
+  const text = message.text || '';
+  const mentionsBot = text.toLowerCase().includes('funkbot') || 
+                      text.toLowerCase().includes('funk bot');
   
   if (!mentionsBot) {
     console.log('ℹ️  Bot not mentioned, ignoring message.');
@@ -45,15 +44,16 @@ app.post('/webhook', async (req, res) => {
   
   console.log('🎯 Bot mentioned! Processing...\n');
   
-  // Extract the question (remove @FunkBot mention)
+  // Extract the question (remove FunkBot mention variations)
   const question = message.text
     .replace(/@funkbot/gi, '')
     .replace(/funkbot/gi, '')
+    .replace(/funk bot/gi, '')
     .trim();
   
   if (!question || question.length < 3) {
     console.log('⚠️  No question detected after mention.');
-    await postToGroupMe("Hey! You mentioned me but didn't ask anything. Try: @FunkBot what's the weather?");
+    await postToGroupMe("Hey! You mentioned me but didn't ask anything. Try: FunkBot what's the weather?");
     return;
   }
   
@@ -90,8 +90,8 @@ async function getClaudeResponse(question) {
             content: question
           }
         ],
-    }),
-    system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.'
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point.'
+      })
     });
 
     if (!response.ok) {
