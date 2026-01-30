@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "WebFetch(domain:docs.perplexity.ai)",
+      "Bash(python3 -c \"import sys, json; content = sys.stdin.read\\(\\); print\\(''''llama-3.1-sonar-large'''' if ''''llama-3.1-sonar-large'''' in content else ''''Model not found''''\\)\")",
+      "WebFetch(domain:www.perplexity.ai)"
+    ]
+  }
+}

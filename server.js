@@ -6,16 +6,16 @@ const fs = require('fs');
 // ==================== CONFIGURATION ====================
 const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID;
 const GROUPME_ACCESS_TOKEN = process.env.GROUPME_ACCESS_TOKEN;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const LSU_TEAM_ID = process.env.LSU_TEAM_ID || '10291565';
 
 const POSTED_HRS_FILE = './posted_home_runs.json';
 let postedHomeRuns = new Set();
 
-// Store recent conversation history (last 10 messages)
+// Store recent conversation history (last 20 messages)
 const conversationHistory = [];
-const MAX_HISTORY = 10;
+const MAX_HISTORY = 20;
 
 // Home run monitoring state
 let homeRunMonitoringActive = false;
@@ -167,7 +167,7 @@ app.post('/webhook', async (req, res) => {
     timestamp: Date.now()
   });
   
-  const aiResponse = await getClaudeResponse(question, message.name);
+  const aiResponse = await getPerplexityResponse(question, message.name);
   
   if (aiResponse) {
     await postToGroupMe(aiResponse);
@@ -188,20 +188,26 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-async function getClaudeResponse(question, userName) {
+async function getPerplexityResponse(question, userName) {
   try {
-    console.log('🤖 Asking Claude with web search and conversation context...');
-    
+    console.log('🤖 Asking Perplexity with web search and conversation context...');
+
     // Build messages array with conversation history
     const messages = [];
-    
-    // Add conversation history (last 10 messages)
+
+    // Add system message first (Perplexity uses system in messages array)
+    messages.push({
+      role: 'system',
+      content: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: You CAN provide sports betting predictions, odds analysis, parlays, and game predictions when asked - this is allowed and encouraged. Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 2000 characters total. Be fairly concise. No rambling.'
+    });
+
+    // Add conversation history (last 20 messages)
     if (conversationHistory.length > 0) {
       const contextSummary = conversationHistory
-        .slice(-10)
+        .slice(-20)
         .map(msg => msg.content)
         .join('\n');
-      
+
       messages.push({
         role: 'user',
         content: `Recent conversation context:\n${contextSummary}\n\nCurrent question from ${userName}: ${question}`
@@ -212,71 +218,55 @@ async function getClaudeResponse(question, userName) {
         content: question
       });
     }
-    
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500, // Roughly 200-600 characters
+        model: 'sonar',
         messages: messages,
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 600 characters total. Be fairly concise. No rambling.',
-        tools: [
-          {
-            type: 'web_search_20250305',
-            name: 'web_search'
-          }
-        ]
+        max_tokens: 500,
+        temperature: 0.7,
+        search_context: 'low' // Use low context for cheaper requests
       })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Claude API error:', response.status, errorText);
+      console.error('Perplexity API error:', response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    
-    let aiMessage = '';
-    let usedSearch = false;
-    
-    for (const block of data.content) {
-      if (block.type === 'text') {
-        aiMessage += block.text;
-      }
-      if (block.type === 'tool_use') {
-        usedSearch = true;
-        console.log('🔍 Claude used web search!');
-      }
-    }
-    
-    if (usedSearch) {
-      console.log('✅ Response includes web search results');
-    }
-    
-    console.log('✅ Got response from Claude');
-    
-    if (!aiMessage) {
-      console.error('No text in Claude response');
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Unexpected Perplexity response format:', data);
       return 'Sorry, I had trouble with that. Try asking differently!';
     }
-    
-    // GroupMe has 1000 char limit, but we asked Claude to keep it under 600
-    // Only trim if Claude ignored our instructions
-    if (aiMessage.length > 2000) {
+
+    const aiMessage = data.choices[0].message.content;
+
+    console.log('✅ Got response from Perplexity (with automatic web search)');
+
+    if (!aiMessage) {
+      console.error('No text in Perplexity response');
+      return 'Sorry, I had trouble with that. Try asking differently!';
+    }
+
+    // GroupMe has 1000 char limit, but we asked Perplexity to keep it under 2000
+    // Only trim if Perplexity ignored our instructions
+    if (aiMessage.length > 2500) {
       console.warn('⚠️ Response too long, trimming:', aiMessage.length, 'chars');
       return aiMessage.substring(0, 897) + '...';
     }
-    
+
     return aiMessage.trim();
-    
+
   } catch (error) {
-    console.error('Error calling Claude:', error);
+    console.error('Error calling Perplexity:', error);
     return null;
   }
 }
@@ -504,7 +494,7 @@ async function startServer() {
       console.log(`📡 Webhook endpoint: /webhook\n`);
       
       console.log('Checking environment variables...');
-      const required = ['GROUPME_BOT_ID', 'ANTHROPIC_API_KEY', 'RAPIDAPI_KEY'];
+      const required = ['GROUPME_BOT_ID', 'PERPLEXITY_API_KEY', 'RAPIDAPI_KEY'];
       const missing = required.filter(key => !process.env[key]);
       
       if (missing.length > 0) {
@@ -522,7 +512,8 @@ async function startServer() {
       
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
-      console.log('   🤖 FunkBot AI: Ready (with 10-message memory)');
+      console.log('   🤖 FunkBot AI: Ready (Perplexity + 20-msg memory)');
+      console.log('   🎲 Sports Betting: Predictions, Parlays, Odds enabled');
       console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
       console.log('   📅 Game Scheduler: Running daily at 8 AM');
       console.log('='.repeat(60) + '\n');
