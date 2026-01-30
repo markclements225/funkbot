@@ -333,45 +333,40 @@ async function startServer() {
     console.log('🐯 FUNKBOT MASTER SERVER STARTING 🐯');
     console.log('='.repeat(60));
     
-    // Check required environment variables
-    console.log('Checking environment variables...');
-    const required = ['GROUPME_BOT_ID', 'ANTHROPIC_API_KEY', 'RAPIDAPI_KEY'];
-    const missing = required.filter(key => !process.env[key]);
-    
-    if (missing.length > 0) {
-      console.error('❌ Missing required environment variables:', missing.join(', '));
-      console.log('Please add them in Railway Variables tab!');
-    } else {
-      console.log('✅ All required environment variables present');
-    }
-    
-    // Load home run tracking data
-    loadPostedHomeRuns();
-    
-    // Check for home runs every minute (only during games)
-    cron.schedule('* * * * *', checkForHomeRuns);
-    console.log('✅ Home run detector: Running every minute');
-    
-    // Check for games daily at 6 AM
-    cron.schedule('0 6 * * *', checkForGameToday);
-    console.log('✅ Game scheduler: Running daily at 6:00 AM CST');
-    
-    // Start Express server for FunkBot AI
-    app.listen(PORT, () => {
-      console.log('✅ FunkBot AI: Listening for @mentions');
-      console.log(`\n🌐 Server running on port ${PORT}`);
-      console.log(`📡 Webhook URL: /webhook`);
+    // START EXPRESS SERVER FIRST (Railway needs this immediately!)
+    app.listen(PORT, async () => {
+      console.log(`✅ Server listening on port ${PORT}`);
+      console.log(`📡 Webhook endpoint: /webhook\n`);
+      
+      // Now do everything else AFTER the server is listening
+      console.log('Checking environment variables...');
+      const required = ['GROUPME_BOT_ID', 'ANTHROPIC_API_KEY', 'RAPIDAPI_KEY'];
+      const missing = required.filter(key => !process.env[key]);
+      
+      if (missing.length > 0) {
+        console.error('❌ Missing required environment variables:', missing.join(', '));
+      } else {
+        console.log('✅ All required environment variables present');
+      }
+      
+      // Load home run tracking data
+      loadPostedHomeRuns();
+      
+      // Check for home runs every minute (only during games)
+      cron.schedule('* * * * *', checkForHomeRuns);
+      console.log('✅ Home run detector: Running every minute');
+      
+      // Check for games daily at 6 AM
+      cron.schedule('0 6 * * *', checkForGameToday);
+      console.log('✅ Game scheduler: Running daily at 6:00 AM CST');
+      
       console.log('\n' + '='.repeat(60));
-      console.log('ALL SYSTEMS ONLINE! 🎉');
+      console.log('🎉 ALL SYSTEMS ONLINE!');
       console.log('='.repeat(60) + '\n');
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);
     console.error(error.stack);
-    // Don't exit - try to keep server running anyway
-    app.listen(PORT, () => {
-      console.log(`⚠️ Server started on port ${PORT} despite errors`);
-    });
   }
 }
 
