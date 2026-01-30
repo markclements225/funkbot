@@ -322,7 +322,7 @@ async function checkForGameToday() {
 // ==================== STARTUP & CRON JOBS ====================
 
 app.get('/', (req, res) => {
-  res.send('🤖 FunkBot Master Server - All Systems Online! 🐯⚾🤖');
+  res.send('🤖 FunkBot Master Server v2.0 - All Systems Online! 🐯⚾🤖');
 });
 
 const PORT = process.env.PORT || 3000;
