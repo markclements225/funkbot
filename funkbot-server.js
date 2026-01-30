@@ -32,10 +32,9 @@ app.post('/webhook', async (req, res) => {
   console.log(`Text: ${message.text}`);
   console.log('='.repeat(60));
   
-  // Check if bot is mentioned (works with @mentions and text)
+  // Check if bot is @mentioned (only respond to tags, not casual mentions)
   const text = message.text || '';
-  const mentionsBot = text.toLowerCase().includes('funkbot') || 
-                      text.toLowerCase().includes('funk bot');
+  const mentionsBot = text.toLowerCase().includes('@funkbot');
   
   if (!mentionsBot) {
     console.log('ℹ️  Bot not mentioned, ignoring message.');
@@ -44,11 +43,9 @@ app.post('/webhook', async (req, res) => {
   
   console.log('🎯 Bot mentioned! Processing...\n');
   
-  // Extract the question (remove FunkBot mention variations)
+  // Extract the question (remove @FunkBot mention - case insensitive)
   const question = message.text
     .replace(/@funkbot/gi, '')
-    .replace(/funkbot/gi, '')
-    .replace(/funk bot/gi, '')
     .trim();
   
   if (!question || question.length < 3) {
