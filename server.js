@@ -74,6 +74,12 @@ async function postToGroupMe(message, imageUrl = null) {
 // Upload image to GroupMe
 async function uploadImageToGroupMe(imagePath) {
   try {
+    // Check if file exists first
+    if (!fs.existsSync(imagePath)) {
+      console.log(`⚠️ Image file not found: ${imagePath}`);
+      return null;
+    }
+    
     const imageBuffer = fs.readFileSync(imagePath);
     const response = await fetch('https://image.groupme.com/pictures', {
       method: 'POST',
@@ -154,15 +160,21 @@ async function getClaudeResponse(question) {
     });
 
     if (!response.ok) {
-      console.error('Claude API error:', response.status);
+      const errorText = await response.text();
+      console.error('Claude API error:', response.status, errorText);
       return null;
     }
 
     const data = await response.json();
+    console.log('📦 Claude response:', JSON.stringify(data, null, 2));
     
     // Claude's response may include multiple content blocks (text + tool use)
-    // We need to handle the full conversation if Claude uses web search
     let aiMessage = '';
+    
+    if (!data.content || data.content.length === 0) {
+      console.error('No content in Claude response');
+      return null;
+    }
     
     for (const block of data.content) {
       if (block.type === 'text') {
@@ -170,10 +182,12 @@ async function getClaudeResponse(question) {
       }
     }
     
-    // If Claude used web search, it will have tool_use blocks
-    // The final text block contains the answer after searching
+    if (!aiMessage) {
+      console.error('No text found in Claude response');
+      return 'Sorry, I got a weird response. Try asking differently!';
+    }
     
-    console.log('✅ Got response from Claude');
+    console.log('✅ Got response from Claude:', aiMessage);
     
     if (aiMessage.length > 400) {
       return aiMessage.substring(0, 397) + '...';
@@ -238,46 +252,54 @@ async function getMatchDetails(matchId) {
 }
 
 async function checkForHomeRuns() {
-  console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs...`);
-  
-  const games = await getLSUGames();
-  
-  if (games.length === 0) {
-    console.log('No LSU games today.');
-    return;
-  }
-
-  for (const game of games) {
-    if (game.state.description === 'Scheduled' || game.state.description === 'Postponed') {
-      continue;
+  try {
+    console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs...`);
+    
+    const games = await getLSUGames();
+    
+    if (games.length === 0) {
+      console.log('No LSU games today.');
+      return;
     }
 
-    const matchDetails = await getMatchDetails(game.id);
-    
-    if (!matchDetails || !matchDetails.plays) continue;
+    for (const game of games) {
+      if (game.state.description === 'Scheduled' || game.state.description === 'Postponed') {
+        continue;
+      }
 
-    const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
-    const lsuTeamId = isLSUHome ? game.homeTeam.id : game.awayTeam.id;
+      const matchDetails = await getMatchDetails(game.id);
+      
+      if (!matchDetails || !matchDetails.plays) continue;
 
-    for (const play of matchDetails.plays) {
-      if (play.type && play.type.toLowerCase().includes('home run') && 
-          play.teamId === lsuTeamId) {
-        
-        const playId = `${game.id}-${play.description}-${play.period}`;
-        
-        if (!postedHomeRuns.has(playId)) {
-          console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
+      const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
+      const lsuTeamId = isLSUHome ? game.homeTeam.id : game.awayTeam.id;
+
+      for (const play of matchDetails.plays) {
+        if (play.type && play.type.toLowerCase().includes('home run') && 
+            play.teamId === lsuTeamId) {
           
-          const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
-          if (imageUrl) {
-            await postToGroupMe('', imageUrl);
+          const playId = `${game.id}-${play.description}-${play.period}`;
+          
+          if (!postedHomeRuns.has(playId)) {
+            console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
+            
+            // Try to upload image, but continue if it fails
+            const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
+            if (imageUrl) {
+              await postToGroupMe('', imageUrl);
+            } else {
+              // Post text if image fails
+              await postToGroupMe('🎉 LSU HOME RUN! 🟣🟡');
+            }
+            
+            postedHomeRuns.add(playId);
+            savePostedHomeRuns();
           }
-          
-          postedHomeRuns.add(playId);
-          savePostedHomeRuns();
         }
       }
     }
+  } catch (error) {
+    console.error('Error in checkForHomeRuns:', error);
   }
 }
 
@@ -306,30 +328,60 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
-  console.log('\n' + '='.repeat(60));
-  console.log('🐯 FUNKBOT MASTER SERVER STARTING 🐯');
-  console.log('='.repeat(60));
-  
-  // Load home run tracking data
-  loadPostedHomeRuns();
-  
-  // Check for home runs every minute (only during games)
-  cron.schedule('* * * * *', checkForHomeRuns);
-  console.log('✅ Home run detector: Running every minute');
-  
-  // Check for games daily at 6 AM
-  cron.schedule('0 6 * * *', checkForGameToday);
-  console.log('✅ Game scheduler: Running daily at 6:00 AM CST');
-  
-  // Start Express server for FunkBot AI
-  app.listen(PORT, () => {
-    console.log('✅ FunkBot AI: Listening for @mentions');
-    console.log(`\n🌐 Server running on port ${PORT}`);
-    console.log(`📡 Webhook URL: /webhook`);
+  try {
     console.log('\n' + '='.repeat(60));
-    console.log('ALL SYSTEMS ONLINE! 🎉');
-    console.log('='.repeat(60) + '\n');
-  });
+    console.log('🐯 FUNKBOT MASTER SERVER STARTING 🐯');
+    console.log('='.repeat(60));
+    
+    // Check required environment variables
+    console.log('Checking environment variables...');
+    const required = ['GROUPME_BOT_ID', 'ANTHROPIC_API_KEY', 'RAPIDAPI_KEY'];
+    const missing = required.filter(key => !process.env[key]);
+    
+    if (missing.length > 0) {
+      console.error('❌ Missing required environment variables:', missing.join(', '));
+      console.log('Please add them in Railway Variables tab!');
+    } else {
+      console.log('✅ All required environment variables present');
+    }
+    
+    // Load home run tracking data
+    loadPostedHomeRuns();
+    
+    // Check for home runs every minute (only during games)
+    cron.schedule('* * * * *', checkForHomeRuns);
+    console.log('✅ Home run detector: Running every minute');
+    
+    // Check for games daily at 6 AM
+    cron.schedule('0 6 * * *', checkForGameToday);
+    console.log('✅ Game scheduler: Running daily at 6:00 AM CST');
+    
+    // Start Express server for FunkBot AI
+    app.listen(PORT, () => {
+      console.log('✅ FunkBot AI: Listening for @mentions');
+      console.log(`\n🌐 Server running on port ${PORT}`);
+      console.log(`📡 Webhook URL: /webhook`);
+      console.log('\n' + '='.repeat(60));
+      console.log('ALL SYSTEMS ONLINE! 🎉');
+      console.log('='.repeat(60) + '\n');
+    });
+  } catch (error) {
+    console.error('❌ FATAL ERROR ON STARTUP:', error);
+    console.error(error.stack);
+    // Don't exit - try to keep server running anyway
+    app.listen(PORT, () => {
+      console.log(`⚠️ Server started on port ${PORT} despite errors`);
+    });
+  }
 }
+
+// Catch any unhandled errors
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('❌ Unhandled Rejection:', error);
+});
 
 startServer();
