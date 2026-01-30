@@ -222,9 +222,9 @@ async function getClaudeResponse(question, userName) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 500,
+        max_tokens: 300, // Roughly 200-600 characters
         messages: messages,
-        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. Keep all responses under 400 characters when possible - be concise and to the point. You can reference recent conversation context if relevant.',
+        system: 'You are FunkBot, a helpful assistant in a GroupMe chat. Keep responses concise, friendly, and informative. Use emojis occasionally but not excessively. If asked about LSU sports, be enthusiastic and use purple and gold emojis 🟣🟡. IMPORTANT: Do NOT ask conversational follow-up questions like "Have you been there?" or "What do you think?". Only ask clarifying questions if you genuinely need more information to answer (e.g., "Which sport?" or "Which year?"). Just provide direct, helpful answers. CRITICAL: Keep ALL responses under 600 characters total. Be concise - you only have 600 characters max, so get straight to the point. No rambling.',
         tools: [
           {
             type: 'web_search_20250305',
@@ -266,8 +266,11 @@ async function getClaudeResponse(question, userName) {
       return 'Sorry, I had trouble with that. Try asking differently!';
     }
     
-    if (aiMessage.length > 400) {
-      return aiMessage.substring(0, 397) + '...';
+    // GroupMe has 1000 char limit, but we asked Claude to keep it under 600
+    // Only trim if Claude ignored our instructions
+    if (aiMessage.length > 900) {
+      console.warn('⚠️ Response too long, trimming:', aiMessage.length, 'chars');
+      return aiMessage.substring(0, 897) + '...';
     }
     
     return aiMessage.trim();
@@ -496,7 +499,7 @@ async function startServer() {
     console.log('='.repeat(60));
     
     // START EXPRESS SERVER FIRST (Railway needs this immediately!)
-    app.listen(PORT, async () => {
+    app.listen(PORT, () => {
       console.log(`✅ Server listening on port ${PORT}`);
       console.log(`📡 Webhook endpoint: /webhook\n`);
       
@@ -517,15 +520,19 @@ async function startServer() {
       cron.schedule('0 8 * * *', checkForGameToday);
       console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
       
-      // Run initial game check on startup
-      await checkForGameToday();
-      
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
       console.log('   🤖 FunkBot AI: Ready (with 10-message memory)');
       console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
       console.log('   📅 Game Scheduler: Running daily at 8 AM');
       console.log('='.repeat(60) + '\n');
+      
+      // Run initial game check AFTER server is up (non-blocking)
+      setTimeout(() => {
+        checkForGameToday().catch(err => {
+          console.error('Error in initial game check:', err);
+        });
+      }, 1000);
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);
