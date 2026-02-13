@@ -361,6 +361,109 @@ async function getMatchDetails(matchId) {
   }
 }
 
+// Get team statistics
+async function getTeamStats(teamId) {
+  try {
+    const response = await fetch(
+      `https://mlb-college-baseball-api.p.rapidapi.com/teams/statistics/${teamId}?fromDate=2025-02-01`,
+      {
+        headers: {
+          'x-rapidapi-host': 'mlb-college-baseball-api.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY
+        }
+      }
+    );
+
+    const data = await response.json();
+    // Get regular season stats (first entry is usually regular season)
+    const regularSeasonStats = data.find(stat => stat.round === 'regular-season');
+    return regularSeasonStats || data[0];
+  } catch (error) {
+    console.error('Error fetching team stats:', error);
+    return null;
+  }
+}
+
+// Convert UTC time to CST and format nicely
+function formatGameTime(utcDateString) {
+  const date = new Date(utcDateString);
+
+  // Convert to CST (UTC-6)
+  const cstDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const dayName = days[cstDate.getDay()];
+  const month = months[cstDate.getMonth()];
+  const day = cstDate.getDate();
+
+  let hours = cstDate.getHours();
+  const minutes = cstDate.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12; // 0 should be 12
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+
+  return `${dayName}, ${month} ${day} @ ${hours}:${minutesStr} ${ampm} CST`;
+}
+
+// Build the game preview message
+async function buildGamePreview(game) {
+  console.log('📋 Building game preview...');
+
+  // Get detailed match info for venue
+  const details = await getMatchDetails(game.id);
+
+  // Determine if LSU is home or away
+  const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
+  const opponent = isLSUHome ? game.awayTeam : game.homeTeam;
+  const lsuTeam = isLSUHome ? game.homeTeam : game.awayTeam;
+
+  // Get team stats
+  console.log('Fetching LSU stats...');
+  const lsuStats = await getTeamStats(LSU_TEAM_ID);
+
+  console.log('Fetching opponent stats...');
+  const oppStats = await getTeamStats(opponent.id);
+
+  // Format the game time
+  const gameTime = formatGameTime(game.date);
+
+  // Build the message
+  let message = '🐯 LSU BASEBALL GAMEDAY 🐯\n\n';
+
+  // Teams
+  message += `${lsuTeam.displayName} ${lsuTeam.name} vs ${opponent.displayName} ${opponent.name}\n`;
+
+  // Date/Time
+  message += `📅 ${gameTime}\n`;
+
+  // Venue
+  if (details && details.venue) {
+    message += `🏟️ ${details.venue.name} - ${details.venue.city}, ${details.venue.state}\n`;
+  }
+
+  // Records
+  message += '\n📊 2025 Season Records:\n';
+
+  if (lsuStats) {
+    const lsuRecord = `${lsuStats.total.games.wins}-${lsuStats.total.games.loses}`;
+    const lsuHomeRecord = isLSUHome ? ` (${lsuStats.home.games.wins}-${lsuStats.home.games.loses} Home)` : ` (${lsuStats.away.games.wins}-${lsuStats.away.games.loses} Away)`;
+    message += `LSU: ${lsuRecord}${lsuHomeRecord}\n`;
+  }
+
+  if (oppStats) {
+    const oppRecord = `${oppStats.total.games.wins}-${oppStats.total.games.loses}`;
+    const oppAwayRecord = !isLSUHome ? ` (${oppStats.home.games.wins}-${oppStats.home.games.loses} Home)` : ` (${oppStats.away.games.wins}-${oppStats.away.games.loses} Away)`;
+    message += `${opponent.displayName}: ${oppRecord}${oppAwayRecord}\n`;
+  }
+
+  message += '\nGEAUX TIGERS! 🟣🟡';
+
+  return message;
+}
+
 async function checkForHomeRuns() {
   try {
     if (!homeRunMonitoringActive) return;
@@ -456,7 +559,12 @@ async function checkForGameToday() {
   
   console.log(`🏟️ LSU vs ${opponent}`);
   console.log(`⏰ First pitch: ${gameTime.toLocaleString()}`);
-  
+
+  // Build and post rich game preview to GroupMe
+  const gamePreview = await buildGamePreview(firstGame);
+  await postToGroupMe(gamePreview);
+  console.log('📤 Posted game preview to GroupMe');
+
   // Calculate when to start monitoring (1 hour before first pitch)
   const monitorStartTime = new Date(gameTime.getTime() - 60 * 60 * 1000);
   
@@ -516,16 +624,16 @@ async function startServer() {
       // Load home run tracking data
       loadPostedHomeRuns();
       
-      // Check for games daily at 8 AM CST
-      cron.schedule('0 8 * * *', checkForGameToday);
-      console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
+      // Check for games daily at 8:30 AM CST
+      cron.schedule('30 8 * * *', checkForGameToday);
+      console.log('✅ Game scheduler: Running daily at 8:30 AM CST');
       
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
       console.log('   🤖 FunkBot AI: Ready (Perplexity + 20-msg memory)');
       console.log('   🎲 Sports Betting: Predictions, Parlays, Odds enabled');
       console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
-      console.log('   📅 Game Scheduler: Running daily at 8 AM');
+      console.log('   📅 Game Scheduler: Running daily at 8:30 AM');
       console.log('='.repeat(60) + '\n');
       
       // Run initial game check AFTER server is up (non-blocking)
