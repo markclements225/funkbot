@@ -624,24 +624,19 @@ async function startServer() {
       // Load home run tracking data
       loadPostedHomeRuns();
       
-      // Check for games daily at 8:30 AM CST
-      cron.schedule('30 8 * * *', checkForGameToday);
-      console.log('✅ Game scheduler: Running daily at 8:30 AM CST');
+      // Check for games daily at 8:00 AM CST
+      cron.schedule('0 8 * * *', checkForGameToday, {
+        timezone: "America/Chicago"
+      });
+      console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
       
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
       console.log('   🤖 FunkBot AI: Ready (Perplexity + 20-msg memory)');
       console.log('   🎲 Sports Betting: Predictions, Parlays, Odds enabled');
       console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
-      console.log('   📅 Game Scheduler: Running daily at 8:30 AM');
+      console.log('   📅 Game Scheduler: Running daily at 8:00 AM');
       console.log('='.repeat(60) + '\n');
-      
-      // Run initial game check AFTER server is up (non-blocking)
-      setTimeout(() => {
-        checkForGameToday().catch(err => {
-          console.error('Error in initial game check:', err);
-        });
-      }, 1000);
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);
