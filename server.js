@@ -498,7 +498,7 @@ async function checkForHomeRuns() {
       }
 
       const matchDetails = await getMatchDetails(game.id);
-      console.log('PLAYS!!!', JSON.stringify(matchDetails?.plays || 'no plays...'));
+      console.log('details!!!', JSON.stringify(matchDetails || 'no match details'));
       if (!matchDetails) {
         console.log('   ⚠️ No match details returned');
         continue;
