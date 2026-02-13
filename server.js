@@ -467,59 +467,90 @@ async function buildGamePreview(game) {
 async function checkForHomeRuns() {
   try {
     if (!homeRunMonitoringActive) return;
-    
+
     console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs...`);
-    
+
     const games = await getLSUGames();
-    
+
     if (games.length === 0) {
       console.log('No LSU games in progress.');
       return;
     }
 
+    console.log(`📊 Found ${games.length} game(s)`);
+
     let allGamesFinished = true;
 
     for (const game of games) {
       const status = game.state.description;
-      
+      console.log(`\n🏟️ Game ${game.id}: ${game.awayTeam.displayName} @ ${game.homeTeam.displayName}`);
+      console.log(`   Status: ${status}`);
+
       // Skip scheduled/postponed games
       if (status === 'Scheduled' || status === 'Postponed') {
+        console.log('   ⏭️ Skipping (not started)');
         continue;
       }
-      
+
       // Check if game is still in progress
       if (status !== 'Finished') {
         allGamesFinished = false;
       }
 
       const matchDetails = await getMatchDetails(game.id);
-      
-      if (!matchDetails || !matchDetails.plays) continue;
+      console.log('PLAYS!!!', JSON.stringify(matchDetails?.plays || 'no plays...'));
+      if (!matchDetails) {
+        console.log('   ⚠️ No match details returned');
+        continue;
+      }
+
+      if (!matchDetails.plays) {
+        console.log('   ⚠️ No plays data in match details');
+        continue;
+      }
+
+      console.log(`   📋 Found ${matchDetails.plays.length} plays`);
 
       const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
       const lsuTeamId = isLSUHome ? game.homeTeam.id : game.awayTeam.id;
+      console.log(`   🐯 LSU Team ID: ${lsuTeamId} (${isLSUHome ? 'Home' : 'Away'})`);
 
+      let homeRunCount = 0;
       for (const play of matchDetails.plays) {
-        if (play.type && play.type.toLowerCase().includes('home run') && 
-            play.teamId === lsuTeamId) {
-          
-          const playId = `${game.id}-${play.description}-${play.period}`;
-          
-          if (!postedHomeRuns.has(playId)) {
-            console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
-            
-            const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
-            if (imageUrl) {
-              await postToGroupMe('', imageUrl);
-            } else {
-              await postToGroupMe('🎉 LSU HOME RUN! 🟣🟡');
+        // Log all plays that might be home runs
+        if (play.type && play.type.toLowerCase().includes('home run')) {
+          console.log(`   🎾 Play: ${play.description}`);
+          console.log(`      Type: ${play.type}`);
+          console.log(`      Team ID: ${play.teamId}`);
+          console.log(`      Period: ${play.period}`);
+          console.log(`      Is LSU: ${play.teamId === lsuTeamId}`);
+
+          if (play.teamId === lsuTeamId) {
+            homeRunCount++;
+            const playId = `${game.id}-${play.description}-${play.period}`;
+            const alreadyPosted = postedHomeRuns.has(playId);
+            console.log(`      Play ID: ${playId}`);
+            console.log(`      Already posted: ${alreadyPosted}`);
+
+            if (!alreadyPosted) {
+              console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
+
+              const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
+              const message = '🎉 LSU HOME RUN! 🟣🟡';
+              if (imageUrl) {
+                await postToGroupMe(message, imageUrl);
+              } else {
+                await postToGroupMe(message);
+              }
+
+              postedHomeRuns.add(playId);
+              savePostedHomeRuns();
             }
-            
-            postedHomeRuns.add(playId);
-            savePostedHomeRuns();
           }
         }
       }
+
+      console.log(`   ⚾ Total LSU home runs found: ${homeRunCount}`);
     }
     
     // If all games are finished, stop monitoring
