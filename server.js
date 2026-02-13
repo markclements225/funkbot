@@ -535,35 +535,39 @@ async function checkForHomeRuns() {
 
 // ==================== GAME DAY SCHEDULER ====================
 
-async function checkForGameToday() {
+async function checkForGameToday(shouldPost = true) {
   const today = new Date().toISOString().split('T')[0];
   console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${today}...`);
-  
+
   const games = await getLSUGames();
-  
+
   if (games.length === 0) {
     console.log('❌ No LSU games today.');
     return;
   }
-  
+
   console.log(`✅ Found ${games.length} LSU game(s) today!`);
-  
+
   // Get first game time
   const firstGame = games[0];
   const gameTime = new Date(firstGame.date);
   const now = new Date();
-  
+
   const opponent = firstGame.homeTeam.id === parseInt(LSU_TEAM_ID)
     ? firstGame.awayTeam.displayName
     : firstGame.homeTeam.displayName;
-  
+
   console.log(`🏟️ LSU vs ${opponent}`);
   console.log(`⏰ First pitch: ${gameTime.toLocaleString()}`);
 
-  // Build and post rich game preview to GroupMe
-  const gamePreview = await buildGamePreview(firstGame);
-  await postToGroupMe(gamePreview);
-  console.log('📤 Posted game preview to GroupMe');
+  // Build and post rich game preview to GroupMe (only if shouldPost is true)
+  if (shouldPost) {
+    const gamePreview = await buildGamePreview(firstGame);
+    await postToGroupMe(gamePreview);
+    console.log('📤 Posted game preview to GroupMe');
+  } else {
+    console.log('⏭️ Skipping game preview post (startup check)');
+  }
 
   // Calculate when to start monitoring (1 hour before first pitch)
   const monitorStartTime = new Date(gameTime.getTime() - 60 * 60 * 1000);
@@ -637,6 +641,13 @@ async function startServer() {
       console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
       console.log('   📅 Game Scheduler: Running daily at 8:00 AM');
       console.log('='.repeat(60) + '\n');
+
+      // Run initial game check AFTER server is up (non-blocking, no posting)
+      setTimeout(() => {
+        checkForGameToday(false).catch(err => {
+          console.error('Error in initial game check:', err);
+        });
+      }, 1000);
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);
