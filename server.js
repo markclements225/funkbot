@@ -364,8 +364,12 @@ async function getMatchDetails(matchId) {
 // Get team statistics
 async function getTeamStats(teamId) {
   try {
+    // Use current year's date
+    const currentYear = new Date().getFullYear();
+    const fromDate = `${currentYear}-02-01`;
+
     const response = await fetch(
-      `https://mlb-college-baseball-api.p.rapidapi.com/teams/statistics/${teamId}?fromDate=2025-02-01`,
+      `https://mlb-college-baseball-api.p.rapidapi.com/teams/statistics/${teamId}?fromDate=${fromDate}`,
       {
         headers: {
           'x-rapidapi-host': 'mlb-college-baseball-api.p.rapidapi.com',
@@ -445,7 +449,8 @@ async function buildGamePreview(game) {
   }
 
   // Records
-  message += '\n📊 2025 Season Records:\n';
+  const currentYear = new Date().getFullYear();
+  message += `\n📊 ${currentYear} Season Records:\n`;
 
   if (lsuStats) {
     const lsuRecord = `${lsuStats.total.games.wins}-${lsuStats.total.games.loses}`;
@@ -535,6 +540,8 @@ async function checkForHomeRuns() {
             if (!alreadyPosted) {
               console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
 
+              // TEMPORARILY DISABLED - Testing mode
+              /*
               const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
               const message = '🎉 LSU HOME RUN! 🟣🟡';
               if (imageUrl) {
@@ -542,6 +549,8 @@ async function checkForHomeRuns() {
               } else {
                 await postToGroupMe(message);
               }
+              */
+              console.log('⏭️ Home run posting temporarily disabled (testing mode)');
 
               postedHomeRuns.add(playId);
               savePostedHomeRuns();
@@ -592,12 +601,22 @@ async function checkForGameToday(shouldPost = true) {
   console.log(`⏰ First pitch: ${gameTime.toLocaleString()}`);
 
   // Build and post rich game preview to GroupMe (only if shouldPost is true)
+  // TEMPORARILY DISABLED - API date issues causing wrong day posts
+  /*
   if (shouldPost) {
     const gamePreview = await buildGamePreview(firstGame);
     await postToGroupMe(gamePreview);
     console.log('📤 Posted game preview to GroupMe');
   } else {
     console.log('⏭️ Skipping game preview post (startup check)');
+  }
+  */
+  console.log('⏭️ Game preview posting temporarily disabled (API date issue)');
+
+  // Still build preview for logging purposes
+  if (shouldPost) {
+    const gamePreview = await buildGamePreview(firstGame);
+    console.log('📝 Game preview (not posted):\n' + gamePreview);
   }
 
   // Calculate when to start monitoring (1 hour before first pitch)
