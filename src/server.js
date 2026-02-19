@@ -2,15 +2,17 @@ require('dotenv').config();
 const express = require('express');
 const cron = require('node-cron');
 const fs = require('fs');
+const statbroadcast = require('./statbroadcast-tracker');
 
 // ==================== CONFIGURATION ====================
 const GROUPME_BOT_ID = process.env.GROUPME_BOT_ID;
 const GROUPME_ACCESS_TOKEN = process.env.GROUPME_ACCESS_TOKEN;
 const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
+// RapidAPI for game metadata (times, locations, records)
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const LSU_TEAM_ID = process.env.LSU_TEAM_ID || '10291565';
 
-const POSTED_HRS_FILE = './posted_home_runs.json';
+const POSTED_HRS_FILE = './config/posted_home_runs.json';
 let postedHomeRuns = new Set();
 
 // Store recent conversation history (last 20 messages)
@@ -283,6 +285,51 @@ async function getPerplexityResponse(question, userName) {
 
 // ==================== HOME RUN DETECTOR ====================
 
+// Clean up home run text for GroupMe posting
+function cleanHomeRunText(rawText) {
+  // Raw format: "Bot 1	HR 7 4RBI	Caraway homered to left field, 4 RBI (0-0); Dardar scored; Yorke scored; Brown scored.	Caraway	Mabry	2"
+  // We want: "[Player] FUNKBLAST!!! X runs score on the home run to [field]!!! LETS GET FUNKY!!!"
+
+  try {
+    const parts = rawText.split('\t');
+
+    if (parts.length >= 3) {
+      const description = parts[2].trim();
+
+      // Extract player name (first word before "homered")
+      const playerMatch = description.match(/^(\w+(?:\s+\w+\.?)?)\s+homered/i);
+      const playerName = playerMatch ? playerMatch[1] : 'LSU';
+
+      // Extract field direction (left/right/center)
+      let fieldDirection = 'the outfield';
+      if (description.includes('to left field')) {
+        fieldDirection = 'left field';
+      } else if (description.includes('to right field')) {
+        fieldDirection = 'right field';
+      } else if (description.includes('to center field')) {
+        fieldDirection = 'center field';
+      }
+
+      // Extract RBI count
+      const rbiMatch = description.match(/(\d+)\s+RBI/i);
+      const rbiCount = rbiMatch ? parseInt(rbiMatch[1]) : 1;
+
+      // Determine runs text (1 run vs X runs)
+      const runsText = rbiCount === 1 ? 'The Tigers score 1 run' : `The Tigers score ${rbiCount} runs`;
+
+      // Build the FUNKY message!
+      return `${playerName} FUNKBLAST!!! ${runsText} on the home run to ${fieldDirection}!!! LETS GET FUNKY!!!`;
+    }
+
+    // Fallback: return cleaned original text
+    return rawText.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim();
+
+  } catch (error) {
+    console.error('Error cleaning home run text:', error);
+    return rawText.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+}
+
 // Start home run monitoring
 function startHomeRunMonitoring() {
   if (homeRunMonitoringActive) {
@@ -313,10 +360,48 @@ function stopHomeRunMonitoring() {
   }
 }
 
-async function getLSUGames() {
+// ==================== STATBROADCAST FUNCTIONS ====================
+// Replaced RapidAPI with StatBroadcast + Puppeteer
+
+/**
+ * Get today's LSU game IDs from StatBroadcast
+ * Returns array of game IDs that we should check
+ */
+async function getLSUGameIDs() {
+  try {
+    // Get all game IDs from LSU's schedule
+    // In the future, we can filter by date more precisely
+    const gameIds = await statbroadcast.getTodaysGameIDs();
+    return gameIds;
+  } catch (error) {
+    console.error('Error fetching LSU game IDs:', error);
+    return [];
+  }
+}
+
+/**
+ * Get game data from StatBroadcast
+ */
+async function getGameData(gameId) {
+  try {
+    return await statbroadcast.getGameData(gameId);
+  } catch (error) {
+    console.error('Error fetching game data:', error);
+    return null;
+  }
+}
+
+// ==================== RAPIDAPI FUNCTIONS (for game metadata) ====================
+
+/**
+ * Get LSU games for today from RapidAPI
+ * Returns game with time, location, records, etc.
+ */
+async function getRapidAPIGameForToday() {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
+
+    console.log('📡 Checking RapidAPI for game metadata...');
     const response = await fetch(
       `https://mlb-college-baseball-api.p.rapidapi.com/matches?date=${today}&league=NCAA`,
       {
@@ -327,247 +412,183 @@ async function getLSUGames() {
       }
     );
 
+    if (!response.ok) {
+      console.log(`   ⚠️  RapidAPI returned ${response.status}`);
+      return null;
+    }
+
     const data = await response.json();
-    
-    const lsuGames = data.data?.filter(match => 
-      match.homeTeam.id === parseInt(LSU_TEAM_ID) || 
+
+    // Find LSU game by team ID
+    const lsuGames = data.data?.filter(match =>
+      match.homeTeam.id === parseInt(LSU_TEAM_ID) ||
       match.awayTeam.id === parseInt(LSU_TEAM_ID)
     ) || [];
 
-    return lsuGames;
-  } catch (error) {
-    console.error('Error fetching LSU games:', error);
-    return [];
-  }
-}
+    if (lsuGames.length > 0) {
+      console.log(`   ✅ Found ${lsuGames.length} LSU game(s) in RapidAPI`);
+      return lsuGames[0]; // Return first game
+    }
 
-async function getMatchDetails(matchId) {
-  try {
-    const response = await fetch(
-      `https://mlb-college-baseball-api.p.rapidapi.com/matches/${matchId}`,
-      {
-        headers: {
-          'x-rapidapi-host': 'mlb-college-baseball-api.p.rapidapi.com',
-          'x-rapidapi-key': RAPIDAPI_KEY
-        }
-      }
-    );
-
-    const data = await response.json();
-    return data[0];
+    console.log('   ⚠️  No LSU games found in RapidAPI');
+    return null;
   } catch (error) {
-    console.error('Error fetching match details:', error);
+    console.error('   ❌ RapidAPI error:', error.message);
     return null;
   }
 }
 
-// Get team statistics
-async function getTeamStats(teamId) {
-  try {
-    // Use current year's date
-    const currentYear = new Date().getFullYear();
-    const fromDate = `${currentYear}-02-01`;
+/**
+ * Build game preview message
+ * Tries RapidAPI first for rich data, falls back to StatBroadcast
+ */
+async function buildGamePreview(gameId) {
+  console.log('📋 Building game day preview...');
 
-    const response = await fetch(
-      `https://mlb-college-baseball-api.p.rapidapi.com/teams/statistics/${teamId}?fromDate=${fromDate}`,
-      {
-        headers: {
-          'x-rapidapi-host': 'mlb-college-baseball-api.p.rapidapi.com',
-          'x-rapidapi-key': RAPIDAPI_KEY
-        }
-      }
-    );
+  // Try to get rich data from RapidAPI
+  const rapidAPIGame = await getRapidAPIGameForToday();
 
-    const data = await response.json();
-    // Get regular season stats (first entry is usually regular season)
-    const regularSeasonStats = data.find(stat => stat.round === 'regular-season');
-    return regularSeasonStats || data[0];
-  } catch (error) {
-    console.error('Error fetching team stats:', error);
-    return null;
-  }
-}
+  if (rapidAPIGame) {
+    // We have full game data from RapidAPI!
+    const lsuIsHome = rapidAPIGame.homeTeam.id === parseInt(LSU_TEAM_ID);
+    const opponent = lsuIsHome ? rapidAPIGame.awayTeam.displayName : rapidAPIGame.homeTeam.displayName;
+    const lsuRecord = lsuIsHome ? rapidAPIGame.homeTeam.record : rapidAPIGame.awayTeam.record;
+    const oppRecord = lsuIsHome ? rapidAPIGame.awayTeam.record : rapidAPIGame.homeTeam.record;
 
-// Convert UTC time to CST and format nicely
-function formatGameTime(utcDateString) {
-  const date = new Date(utcDateString);
+    // Parse game time
+    const gameTime = new Date(rapidAPIGame.date);
+    const timeString = gameTime.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'America/Chicago'
+    });
 
-  // Convert to CST (UTC-6)
-  const cstDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    // Build rich message
+    let message = '🐯 ITS GAMEDAY YALL!!! 🐯\n\n';
 
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // Teams and records
+    if (lsuIsHome) {
+      message += `LSU (${lsuRecord}) vs ${opponent} (${oppRecord})\n`;
+      message += `🏟️ ${rapidAPIGame.venue?.name || 'Alex Box Stadium'}\n`;
+    } else {
+      message += `LSU (${lsuRecord}) at ${opponent} (${oppRecord})\n`;
+      message += `🏟️ ${rapidAPIGame.venue?.name || 'Away'}\n`;
+    }
 
-  const dayName = days[cstDate.getDay()];
-  const month = months[cstDate.getMonth()];
-  const day = cstDate.getDate();
+    message += `🕐 ${timeString} CST\n\n`;
+    message += 'Time to get FUNKY! 🟣🟡\n\n';
+    message += 'GEAUX TIGERS!!!';
 
-  let hours = cstDate.getHours();
-  const minutes = cstDate.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12; // 0 should be 12
-  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
-
-  return `${dayName}, ${month} ${day} @ ${hours}:${minutesStr} ${ampm} CST`;
-}
-
-// Build the game preview message
-async function buildGamePreview(game) {
-  console.log('📋 Building game preview...');
-
-  // Get detailed match info for venue
-  const details = await getMatchDetails(game.id);
-
-  // Determine if LSU is home or away
-  const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
-  const opponent = isLSUHome ? game.awayTeam : game.homeTeam;
-  const lsuTeam = isLSUHome ? game.homeTeam : game.awayTeam;
-
-  // Get team stats
-  console.log('Fetching LSU stats...');
-  const lsuStats = await getTeamStats(LSU_TEAM_ID);
-
-  console.log('Fetching opponent stats...');
-  const oppStats = await getTeamStats(opponent.id);
-
-  // Format the game time
-  const gameTime = formatGameTime(game.date);
-
-  // Build the message
-  let message = '🐯 LSU BASEBALL GAMEDAY 🐯\n\n';
-
-  // Teams
-  message += `${lsuTeam.displayName} ${lsuTeam.name} vs ${opponent.displayName} ${opponent.name}\n`;
-
-  // Date/Time
-  message += `📅 ${gameTime}\n`;
-
-  // Venue
-  if (details && details.venue) {
-    message += `🏟️ ${details.venue.name} - ${details.venue.city}, ${details.venue.state}\n`;
+    return { message, gameTime: rapidAPIGame.date, rapidAPIData: rapidAPIGame };
   }
 
-  // Records
-  const currentYear = new Date().getFullYear();
-  message += `\n📊 ${currentYear} Season Records:\n`;
+  // Fallback: Use StatBroadcast data (basic)
+  console.log('   ⚠️  Using basic game preview (no RapidAPI data)');
+  const gameData = await getGameData(gameId);
 
-  if (lsuStats) {
-    const lsuRecord = `${lsuStats.total.games.wins}-${lsuStats.total.games.loses}`;
-    const lsuHomeRecord = isLSUHome ? ` (${lsuStats.home.games.wins}-${lsuStats.home.games.loses} Home)` : ` (${lsuStats.away.games.wins}-${lsuStats.away.games.loses} Away)`;
-    message += `LSU: ${lsuRecord}${lsuHomeRecord}\n`;
+  if (!gameData) {
+    return {
+      message: '🐯 ITS GAMEDAY YALL!!! 🐯\n\nLSU Baseball is ON today! Time to get FUNKY! 🟣🟡\n\nGEAUX TIGERS!!!',
+      gameTime: null,
+      rapidAPIData: null
+    };
   }
 
-  if (oppStats) {
-    const oppRecord = `${oppStats.total.games.wins}-${oppStats.total.games.loses}`;
-    const oppAwayRecord = !isLSUHome ? ` (${oppStats.home.games.wins}-${oppStats.home.games.loses} Home)` : ` (${oppStats.away.games.wins}-${oppStats.away.games.loses} Away)`;
-    message += `${opponent.displayName}: ${oppRecord}${oppAwayRecord}\n`;
-  }
+  // Extract opponent from title if possible
+  const title = gameData.title || 'LSU Baseball';
+  let message = '🐯 ITS GAMEDAY YALL!!! 🐯\n\n';
+  message += `${title}\n\n`;
+  message += 'Time to get FUNKY! 🟣🟡\n\n';
+  message += 'GEAUX TIGERS!!!';
 
-  message += '\nGEAUX TIGERS! 🟣🟡';
-
-  return message;
+  return { message, gameTime: null, rapidAPIData: null };
 }
 
 async function checkForHomeRuns() {
   try {
     if (!homeRunMonitoringActive) return;
 
-    console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs...`);
+    console.log(`[${new Date().toLocaleTimeString()}] 🔍 Checking for LSU home runs via StatBroadcast...`);
 
-    const games = await getLSUGames();
+    // Get game IDs to check
+    const gameIds = await getLSUGameIDs();
 
-    if (games.length === 0) {
-      console.log('No LSU games in progress.');
+    if (gameIds.length === 0) {
+      console.log('No LSU games found to monitor.');
       return;
     }
 
-    console.log(`📊 Found ${games.length} game(s)`);
+    console.log(`📊 Checking ${gameIds.length} game(s)`);
 
-    let allGamesFinished = true;
+    // Check each game for home runs
+    for (const gameId of gameIds) {
+      console.log(`\n🏟️ Checking game ${gameId}...`);
 
-    for (const game of games) {
-      const status = game.state.description;
-      console.log(`\n🏟️ Game ${game.id}: ${game.awayTeam.displayName} @ ${game.homeTeam.displayName}`);
-      console.log(`   Status: ${status}`);
+      const gameData = await getGameData(gameId);
 
-      // Skip scheduled/postponed games
-      if (status === 'Scheduled' || status === 'Postponed') {
-        console.log('   ⏭️ Skipping (not started)');
+      if (!gameData) {
+        console.log('   ⚠️ No game data returned');
         continue;
       }
 
-      // Check if game is still in progress
-      if (status !== 'Finished') {
-        allGamesFinished = false;
-      }
+      console.log(`   📝 Title: ${gameData.title}`);
+      console.log(`   📊 Found ${gameData.homeRuns.length} total home run mention(s)`);
 
-      const matchDetails = await getMatchDetails(game.id);
-      console.log('details!!!', JSON.stringify(matchDetails || 'no match details'));
-      if (!matchDetails) {
-        console.log('   ⚠️ No match details returned');
-        continue;
-      }
+      // Filter for LSU home runs
+      const lsuHomeRuns = gameData.homeRuns.filter(hr =>
+        statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText)
+      );
 
-      if (!matchDetails.plays) {
-        console.log('   ⚠️ No plays data in match details');
-        continue;
-      }
+      console.log(`   🐯 LSU home runs: ${lsuHomeRuns.length}`);
 
-      console.log(`   📋 Found ${matchDetails.plays.length} plays`);
+      for (const homeRun of lsuHomeRuns) {
+        // Create unique ID for this home run
+        const playId = `${gameId}-${homeRun.text.substring(0, 50)}`;
+        const alreadyPosted = postedHomeRuns.has(playId);
 
-      const isLSUHome = game.homeTeam.id === parseInt(LSU_TEAM_ID);
-      const lsuTeamId = isLSUHome ? game.homeTeam.id : game.awayTeam.id;
-      console.log(`   🐯 LSU Team ID: ${lsuTeamId} (${isLSUHome ? 'Home' : 'Away'})`);
+        console.log(`   🎾 ${homeRun.text.substring(0, 100)}...`);
+        console.log(`      Already posted: ${alreadyPosted}`);
 
-      let homeRunCount = 0;
-      for (const play of matchDetails.plays) {
-        // Log all plays that might be home runs
-        if (play.type && play.type.toLowerCase().includes('home run')) {
-          console.log(`   🎾 Play: ${play.description}`);
-          console.log(`      Type: ${play.type}`);
-          console.log(`      Team ID: ${play.teamId}`);
-          console.log(`      Period: ${play.period}`);
-          console.log(`      Is LSU: ${play.teamId === lsuTeamId}`);
+        if (!alreadyPosted) {
+          console.log(`\n🎉 NEW LSU HOME RUN DETECTED!`);
+          console.log(`   ${homeRun.text}\n`);
 
-          if (play.teamId === lsuTeamId) {
-            homeRunCount++;
-            const playId = `${game.id}-${play.description}-${play.period}`;
-            const alreadyPosted = postedHomeRuns.has(playId);
-            console.log(`      Play ID: ${playId}`);
-            console.log(`      Already posted: ${alreadyPosted}`);
+          // Clean up the text for GroupMe
+          const cleanText = cleanHomeRunText(homeRun.text);
+          console.log(`   Cleaned: ${cleanText}\n`);
 
-            if (!alreadyPosted) {
-              console.log(`🎉 NEW LSU HOME RUN: ${play.description}`);
+          // Post to GroupMe
+          const imageUrl = await uploadImageToGroupMe('./assets/FunkBlastoise.jpg');
+          const message = `🎉 LSU HOME RUN! 🟣🟡\n\n${cleanText}`;
 
-              // TEMPORARILY DISABLED - Testing mode
-              /*
-              const imageUrl = await uploadImageToGroupMe('./FunkBlastoise.jpg');
-              const message = '🎉 LSU HOME RUN! 🟣🟡';
-              if (imageUrl) {
-                await postToGroupMe(message, imageUrl);
-              } else {
-                await postToGroupMe(message);
-              }
-              */
-              console.log('⏭️ Home run posting temporarily disabled (testing mode)');
-
-              postedHomeRuns.add(playId);
-              savePostedHomeRuns();
-            }
+          if (imageUrl) {
+            await postToGroupMe(message, imageUrl);
+          } else {
+            await postToGroupMe(message);
           }
+
+          // Mark as posted
+          postedHomeRuns.add(playId);
+          savePostedHomeRuns();
         }
       }
 
-      console.log(`   ⚾ Total LSU home runs found: ${homeRunCount}`);
+      // Check if game is final (stop monitoring 5 minutes after)
+      if (gameData.title && gameData.title.toLowerCase().includes('final')) {
+        console.log(`\n🏁 Game ${gameId} is FINAL - will stop monitoring in 5 minutes`);
+
+        // Schedule stop in 5 minutes
+        setTimeout(() => {
+          console.log('⏰ 5 minutes after Final - Stopping home run monitoring');
+          stopHomeRunMonitoring();
+        }, 5 * 60 * 1000);
+      }
+
+      // Small delay between games
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
-    // If all games are finished, stop monitoring
-    if (allGamesFinished && games.length > 0) {
-      console.log('✅ All LSU games finished! Stopping home run monitoring.');
-      stopHomeRunMonitoring();
-    }
-    
+
   } catch (error) {
     console.error('Error in checkForHomeRuns:', error);
   }
@@ -579,69 +600,58 @@ async function checkForGameToday(shouldPost = true) {
   const today = new Date().toISOString().split('T')[0];
   console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${today}...`);
 
-  const games = await getLSUGames();
+  const gameIds = await getLSUGameIDs();
 
-  if (games.length === 0) {
-    console.log('❌ No LSU games today.');
+  if (gameIds.length === 0) {
+    console.log('❌ No LSU games found in schedule.');
     return;
   }
 
-  console.log(`✅ Found ${games.length} LSU game(s) today!`);
+  console.log(`✅ Found ${gameIds.length} LSU game(s) in schedule!`);
+  console.log(`   Game IDs: ${gameIds.join(', ')}`);
 
-  // Get first game time
-  const firstGame = games[0];
-  const gameTime = new Date(firstGame.date);
-  const now = new Date();
+  // Build game preview (tries RapidAPI for rich data)
+  const preview = await buildGamePreview(gameIds[0]);
+  const gameMessage = preview.message || preview; // Handle old string format or new object format
+  const gameTime = preview.gameTime;
 
-  const opponent = firstGame.homeTeam.id === parseInt(LSU_TEAM_ID)
-    ? firstGame.awayTeam.displayName
-    : firstGame.homeTeam.displayName;
-
-  console.log(`🏟️ LSU vs ${opponent}`);
-  console.log(`⏰ First pitch: ${gameTime.toLocaleString()}`);
-
-  // Build and post rich game preview to GroupMe (only if shouldPost is true)
-  // TEMPORARILY DISABLED - API date issues causing wrong day posts
-  /*
+  // Post game day alert to GroupMe
   if (shouldPost) {
-    const gamePreview = await buildGamePreview(firstGame);
-    await postToGroupMe(gamePreview);
-    console.log('📤 Posted game preview to GroupMe');
-  } else {
-    console.log('⏭️ Skipping game preview post (startup check)');
-  }
-  */
-  console.log('⏭️ Game preview posting temporarily disabled (API date issue)');
-
-  // Still build preview for logging purposes
-  if (shouldPost) {
-    const gamePreview = await buildGamePreview(firstGame);
-    console.log('📝 Game preview (not posted):\n' + gamePreview);
+    console.log('📝 Game preview:\n' + gameMessage);
+    await postToGroupMe(gameMessage);
+    console.log('✅ Posted game day alert to GroupMe!');
   }
 
-  // Calculate when to start monitoring (1 hour before first pitch)
-  const monitorStartTime = new Date(gameTime.getTime() - 60 * 60 * 1000);
-  
-  if (now < monitorStartTime) {
-    // Schedule monitoring to start later
-    const msUntilStart = monitorStartTime.getTime() - now.getTime();
-    const minutesUntil = Math.round(msUntilStart / 1000 / 60);
-    
-    console.log(`⏳ Will start monitoring in ${minutesUntil} minutes (1 hour before first pitch)`);
-    
-    setTimeout(() => {
-      console.log('🎯 Game time! Starting home run monitoring...');
+  // Schedule monitoring based on game time
+  if (gameTime) {
+    const gameDate = new Date(gameTime);
+    const now = new Date();
+
+    // Start monitoring 5 minutes before first pitch
+    const startTime = new Date(gameDate.getTime() - 5 * 60 * 1000);
+    const msUntilStart = startTime.getTime() - now.getTime();
+
+    if (msUntilStart > 0) {
+      // Game is in the future - schedule monitoring
+      console.log(`⏰ Game starts at ${gameDate.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' })} CST`);
+      console.log(`🎯 Will start monitoring at ${startTime.toLocaleTimeString('en-US', { timeZone: 'America/Chicago' })} CST (5 min before)`);
+      console.log(`   (in ${Math.round(msUntilStart / 1000 / 60)} minutes)`);
+
+      setTimeout(() => {
+        console.log('\n⚾ GAME TIME! Starting home run monitoring...');
+        startHomeRunMonitoring();
+      }, msUntilStart);
+    } else if (now < new Date(gameDate.getTime() + 5 * 60 * 60 * 1000)) {
+      // Game started recently (within last 5 hours) - start monitoring now
+      console.log('🎯 Game is in progress! Starting home run monitoring now...');
       startHomeRunMonitoring();
-    }, msUntilStart);
-    
-  } else if (now < gameTime) {
-    // We're within the 1-hour window before the game
-    console.log('🎯 Game starting soon! Starting home run monitoring now...');
-    startHomeRunMonitoring();
-    
+    } else {
+      console.log('⚠️  Game time has passed. Not starting monitoring.');
+    }
   } else {
-    // Game should have already started
-    console.log('🎯 Game in progress! Starting home run monitoring now...');
+    // No game time available - start monitoring now (fallback behavior)
+    console.log('⚠️  No game time available from RapidAPI');
+    console.log('🎯 Starting home run monitoring now (fallback)...');
     startHomeRunMonitoring();
   }
 }
@@ -666,14 +676,25 @@ async function startServer() {
       console.log(`📡 Webhook endpoint: /webhook\n`);
       
       console.log('Checking environment variables...');
-      const required = ['GROUPME_BOT_ID', 'PERPLEXITY_API_KEY', 'RAPIDAPI_KEY'];
+      const required = ['GROUPME_BOT_ID', 'PERPLEXITY_API_KEY'];
+      const optional = ['RAPIDAPI_KEY', 'LSU_TEAM_ID'];
       const missing = required.filter(key => !process.env[key]);
-      
+
       if (missing.length > 0) {
         console.error('❌ Missing required environment variables:', missing.join(', '));
       } else {
         console.log('✅ All required environment variables present');
       }
+
+      const missingOptional = optional.filter(key => !process.env[key]);
+      if (missingOptional.length > 0) {
+        console.log(`⚠️  Optional environment variables missing: ${missingOptional.join(', ')}`);
+        console.log('   Game alerts will be basic (no time/location/records)');
+      } else {
+        console.log('✅ RapidAPI configured - rich game alerts enabled');
+      }
+
+      console.log('✅ Using StatBroadcast + Puppeteer for home run detection');
       
       // Load home run tracking data
       loadPostedHomeRuns();
@@ -683,21 +704,42 @@ async function startServer() {
         timezone: "America/Chicago"
       });
       console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
+
+      // Stop monitoring at midnight every day (cleanup)
+      cron.schedule('0 0 * * *', () => {
+        console.log('\n🌙 Midnight - Stopping home run monitoring for the day');
+        stopHomeRunMonitoring();
+      }, {
+        timezone: "America/Chicago"
+      });
+      console.log('✅ Auto-stop scheduler: Stops monitoring at midnight CST');
       
       console.log('\n' + '='.repeat(60));
       console.log('🎉 ALL SYSTEMS ONLINE!');
       console.log('   🤖 FunkBot AI: Ready (Perplexity + 20-msg memory)');
       console.log('   🎲 Sports Betting: Predictions, Parlays, Odds enabled');
-      console.log('   ⚾ Home Run Detector: Ready (auto-starts on game days)');
+      console.log('   ⚾ Home Run Detector: Ready (StatBroadcast + Puppeteer)');
+      console.log('   🌐 Data Source: LSU StatBroadcast (real-time scraping)');
       console.log('   📅 Game Scheduler: Running daily at 8:00 AM');
       console.log('='.repeat(60) + '\n');
+
+      // Post deployment success message to GroupMe
+      setTimeout(async () => {
+        try {
+          const deploymentMessage = '🚀 FunkBot has been deployed successfully! All systems are FUNKY and ready to track LSU home runs! 🐯⚾';
+          await postToGroupMe(deploymentMessage);
+          console.log('✅ Posted deployment success message to GroupMe!');
+        } catch (error) {
+          console.error('❌ Failed to post deployment message:', error);
+        }
+      }, 2000);
 
       // Run initial game check AFTER server is up (non-blocking, no posting)
       setTimeout(() => {
         checkForGameToday(false).catch(err => {
           console.error('Error in initial game check:', err);
         });
-      }, 1000);
+      }, 3000);
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);

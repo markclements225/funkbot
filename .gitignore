@@ -1,4 +1,36 @@
+# Dependencies
 node_modules/
+package-lock.json
+
+# Environment Variables
 .env
-posted_home_runs.json
-FunkBlastoise.jpg
+.env.local
+.env.*.local
+
+# Runtime Data
+config/posted_home_runs.json
+*.log
+logs/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build Output
+dist/
+build/
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Archive (optional - can commit these if you want backup)
+archive/
