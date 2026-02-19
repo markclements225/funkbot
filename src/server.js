@@ -734,12 +734,10 @@ async function startServer() {
         }
       }, 2000);
 
-      // Run initial game check AFTER server is up (non-blocking, no posting)
-      setTimeout(() => {
-        checkForGameToday(false).catch(err => {
-          console.error('Error in initial game check:', err);
-        });
-      }, 3000);
+      // Initial game check disabled on startup to prevent posting old home runs
+      // The 8:00 AM scheduler will handle game detection
+      console.log('⏰ Waiting for 8:00 AM scheduler to check for games...');
+      console.log('   (or manually add game to config/game-config.json to start now)');
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);

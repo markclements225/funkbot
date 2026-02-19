@@ -77,52 +77,28 @@ async function getTodaysGameIDs() {
             return todaysGames;
           }
 
-          // If no games today, check nearby dates (yesterday and tomorrow)
+          // No games today
           console.log(`   ⚠️  No games scheduled for ${todayStr}`);
-          console.log('   🔍 Checking yesterday and tomorrow...');
-
-          const yesterday = new Date(today);
-          yesterday.setDate(today.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-          const tomorrow = new Date(today);
-          tomorrow.setDate(today.getDate() + 1);
-          const tomorrowStr = tomorrow.toISOString().split('T')[0];
-
-          const nearbyGames = schedule
-            .filter(game => game.date === yesterdayStr || game.date === tomorrowStr)
-            .map(game => game.gameId);
-
-          if (nearbyGames.length > 0) {
-            console.log(`   📊 Will monitor nearby games: ${nearbyGames.join(', ')}`);
-            return nearbyGames;
-          }
+          console.log('   💡 TIP: Add game manually to game-config.json if needed');
+          return [];
         }
 
-        // Fallback to old behavior if schedule file doesn't exist
-        const numToCheck = config.checkRecentGames || 5;
-        console.log(`   🔍 Schedule file not found, checking ${numToCheck} most recent games`);
-
-        const allGameIds = await getAllLSUGameIDs();
-        const recentGames = allGameIds.slice(0, numToCheck);
-
-        console.log(`   📊 Will monitor: ${recentGames.join(', ')}`);
-        console.log(`   💡 TIP: Edit game-config.json to specify exact game IDs`);
-
-        return recentGames;
+        // Schedule file doesn't exist - return empty array
+        console.log('   ⚠️  Schedule file not found');
+        console.log('   💡 TIP: Create config/lsu-schedule-2026.json or use game-config.json');
+        return [];
       }
     }
 
-    // Fallback: check 3 most recent games
-    console.log('   ⚠️  No config found, checking 3 most recent games');
-    const allGameIds = await getAllLSUGameIDs();
-    return allGameIds.slice(0, 3);
+    // No config found - return empty array
+    console.log('   ⚠️  No config found');
+    console.log('   💡 TIP: Create config/game-config.json and config/lsu-schedule-2026.json');
+    return [];
 
   } catch (error) {
-    console.error('Error getting games:', error);
-    // Fallback
-    const allGameIds = await getAllLSUGameIDs();
-    return allGameIds.slice(0, 3);
+    console.error('❌ Error getting games:', error);
+    // Don't fall back to random games - return empty array
+    return [];
   }
 }
 
