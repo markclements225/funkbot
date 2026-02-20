@@ -467,13 +467,20 @@ async function buildGamePreview(gameId) {
     // Build rich message
     let message = '🐯 ITS GAMEDAY YALL!!! 🐯\n\n';
 
-    // Teams and records
+    // Teams and records (only show records if they exist)
     if (lsuIsHome) {
-      message += `LSU (${lsuRecord}) vs ${opponent} (${oppRecord})\n`;
-      message += `🏟️ ${rapidAPIGame.venue?.name || 'Alex Box Stadium'}\n`;
+      const lsuPart = lsuRecord ? `LSU (${lsuRecord})` : 'LSU';
+      const oppPart = oppRecord ? `${opponent} (${oppRecord})` : opponent;
+      message += `${lsuPart} vs ${oppPart}\n`;
     } else {
-      message += `LSU (${lsuRecord}) at ${opponent} (${oppRecord})\n`;
-      message += `🏟️ ${rapidAPIGame.venue?.name || 'Away'}\n`;
+      const lsuPart = lsuRecord ? `LSU (${lsuRecord})` : 'LSU';
+      const oppPart = oppRecord ? `${opponent} (${oppRecord})` : opponent;
+      message += `${lsuPart} at ${oppPart}\n`;
+    }
+
+    // Only show venue if we have actual venue data
+    if (rapidAPIGame.venue?.name) {
+      message += `🏟️ ${rapidAPIGame.venue.name}\n`;
     }
 
     message += `🕐 ${timeString} CST\n\n`;
@@ -699,11 +706,11 @@ async function startServer() {
       // Load home run tracking data
       loadPostedHomeRuns();
       
-      // Check for games daily at 8:00 AM CST
-      cron.schedule('0 8 * * *', checkForGameToday, {
+      // Check for games daily at 8:30 AM CST
+      cron.schedule('30 8 * * *', checkForGameToday, {
         timezone: "America/Chicago"
       });
-      console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
+      console.log('✅ Game scheduler: Running daily at 8:30 AM CST');
 
       // Stop monitoring at midnight every day (cleanup)
       cron.schedule('0 0 * * *', () => {
@@ -735,8 +742,8 @@ async function startServer() {
       }, 2000);
 
       // Initial game check disabled on startup to prevent posting old home runs
-      // The 8:00 AM scheduler will handle game detection
-      console.log('⏰ Waiting for 8:00 AM scheduler to check for games...');
+      // The 8:30 AM scheduler will handle game detection
+      console.log('⏰ Waiting for 8:30 AM scheduler to check for games...');
       console.log('   (or manually add game to config/game-config.json to start now)');
     });
   } catch (error) {
