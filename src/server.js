@@ -391,6 +391,39 @@ async function getGameData(gameId) {
   }
 }
 
+/**
+ * Check if a game is currently live/in progress
+ * Returns true if game has started but not finished
+ */
+function isGameLive(gameData) {
+  if (!gameData) return false;
+
+  const title = (gameData.title || '').toLowerCase();
+  const rawText = (gameData.rawText || '').toLowerCase();
+
+  // Check if game is final/postponed/cancelled
+  if (title.includes('final') || title.includes('postponed') || title.includes('cancelled')) {
+    return false;
+  }
+
+  // Check if game has started (has score or inning indicator)
+  const hasScore = gameData.plays && gameData.plays.length > 10; // Has substantial plays
+  const hasInning = title.match(/(top|bot|mid|end|t\d|b\d)/i); // Has inning indicator
+  const hasTeamScores = title.match(/\d+,.*\d+/); // Has scores like "LSU 7, IND 5"
+
+  // If it has inning/score indicators and is not final, it's likely live
+  if ((hasInning || hasTeamScores) && hasScore) {
+    return true;
+  }
+
+  // Check for "in progress" or similar status indicators
+  if (rawText.includes('in progress') || rawText.includes('live')) {
+    return true;
+  }
+
+  return false;
+}
+
 // ==================== RAPIDAPI FUNCTIONS (for game metadata) ====================
 
 /**
@@ -603,6 +636,55 @@ async function checkForHomeRuns() {
 
 // ==================== GAME DAY SCHEDULER ====================
 
+/**
+ * Check for ongoing games on startup (after redeploy during live game)
+ * Starts monitoring immediately if a game is in progress
+ * Returns true if a live game was found, false otherwise
+ */
+async function checkForOngoingGames() {
+  console.log('\n🔍 Startup check: Looking for ongoing games...');
+
+  try {
+    const gameIds = await getLSUGameIDs();
+
+    if (gameIds.length === 0) {
+      console.log('   ⚠️  No games found in schedule');
+      return false;
+    }
+
+    console.log(`   📊 Found ${gameIds.length} game(s) in schedule`);
+
+    // Check each game to see if it's currently live
+    for (const gameId of gameIds) {
+      const gameData = await getGameData(gameId);
+
+      if (!gameData) {
+        console.log(`   ⚠️  Game ${gameId}: No data available`);
+        continue;
+      }
+
+      const isLive = isGameLive(gameData);
+      const title = gameData.title || 'Unknown';
+
+      console.log(`   📝 Game ${gameId}: ${title}`);
+      console.log(`      Status: ${isLive ? '🟢 LIVE' : '⚪ Not live'}`);
+
+      if (isLive) {
+        console.log(`\n   🎯 LIVE GAME DETECTED! Starting home run monitoring immediately...`);
+        startHomeRunMonitoring();
+        return true; // Return true to indicate live game was found
+      }
+    }
+
+    console.log('   ✅ No live games detected at this time');
+    return false;
+
+  } catch (error) {
+    console.error('   ❌ Error checking for ongoing games:', error.message);
+    return false;
+  }
+}
+
 async function checkForGameToday(shouldPost = true) {
   const today = new Date().toISOString().split('T')[0];
   console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${today}...`);
@@ -706,11 +788,11 @@ async function startServer() {
       // Load home run tracking data
       loadPostedHomeRuns();
       
-      // Check for games daily at 8:30 AM CST
-      cron.schedule('30 8 * * *', checkForGameToday, {
+      // Check for games daily at 8:00 AM CST
+      cron.schedule('0 8 * * *', checkForGameToday, {
         timezone: "America/Chicago"
       });
-      console.log('✅ Game scheduler: Running daily at 8:30 AM CST');
+      console.log('✅ Game scheduler: Running daily at 8:00 AM CST');
 
       // Stop monitoring at midnight every day (cleanup)
       cron.schedule('0 0 * * *', () => {
@@ -741,10 +823,20 @@ async function startServer() {
         }
       }, 2000);
 
-      // Initial game check disabled on startup to prevent posting old home runs
-      // The 8:30 AM scheduler will handle game detection
-      console.log('⏰ Waiting for 8:30 AM scheduler to check for games...');
-      console.log('   (or manually add game to config/game-config.json to start now)');
+      // Check for ongoing games on startup (handles redeploys during live games)
+      setTimeout(async () => {
+        try {
+          const foundLiveGame = await checkForOngoingGames();
+
+          if (!foundLiveGame) {
+            console.log('\n⏰ No live games at this time.');
+            console.log('   Waiting for 8:00 AM CST scheduler to check for games...');
+            console.log('   (or manually add game to config/game-config.json to start now)');
+          }
+        } catch (error) {
+          console.error('❌ Error during startup game check:', error);
+        }
+      }, 3000); // Wait 3 seconds after deployment message
     });
   } catch (error) {
     console.error('❌ FATAL ERROR ON STARTUP:', error);
