@@ -40,7 +40,7 @@ async function checkCurrentGames() {
         console.log(`\n   🔥 HOME RUNS:`);
         gameData.homeRuns.forEach((hr, idx) => {
           console.log(`   ${idx + 1}. ${hr.text.substring(0, 100)}`);
-          console.log(`      LSU? ${statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText) ? '✅ YES' : '❌ NO'}`);
+          console.log(`      LSU? ${statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText, gameData.lsuIsHome) ? '✅ YES' : '❌ NO'}`);
         });
       }
 

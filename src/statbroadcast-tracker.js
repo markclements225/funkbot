@@ -213,7 +213,8 @@ async function getGameData(gameId) {
         inning: '',
         teams: { home: '', away: '' },
         status: '',
-        rawText: document.body.innerText
+        rawText: document.body.innerText,
+        lsuIsHome: null // Will be determined below
       };
 
       // Try to extract team names from title or page
@@ -223,10 +224,84 @@ async function getGameData(gameId) {
         result.teams.away = titleMatch[2]?.trim() || '';
       }
 
-      // Search entire page text for home runs
+      // DETECT HOME/AWAY: Check which tab is labeled "Home Stats"
       const allText = document.body.innerText;
       const lines = allText.split('\n');
 
+      // Method 1: Look for "Home Stats" and "Visitor Stats" tabs/buttons
+      const buttons = document.querySelectorAll('button, [role="tab"]');
+      let homeStatsButton = null;
+      let visitorStatsButton = null;
+
+      buttons.forEach(btn => {
+        const text = btn.textContent.trim().toLowerCase();
+        if (text === 'home stats') homeStatsButton = btn;
+        if (text === 'visitor stats') visitorStatsButton = btn;
+      });
+
+      // Click Home Stats to see which team it is
+      if (homeStatsButton) {
+        homeStatsButton.click();
+        // Give it a moment to load
+        const startTime = Date.now();
+        while (Date.now() - startTime < 100) {} // Small delay
+
+        // Check if the visible content mentions LSU
+        const bodyText = document.body.innerText.toLowerCase();
+        if (bodyText.includes('lsu') && bodyText.includes('tigers')) {
+          result.lsuIsHome = true;
+        } else {
+          result.lsuIsHome = false;
+        }
+
+        // Switch back to Scoring tab
+        const scoringBtn = Array.from(document.querySelectorAll('button, [role="tab"]'))
+          .find(el => el.textContent.toLowerCase().includes('scoring') && !el.textContent.toLowerCase().includes('card'));
+        if (scoringBtn) scoringBtn.click();
+      }
+
+      // Method 2: Check score table order (first team = away, second = home)
+      if (result.lsuIsHome === null) {
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          // Look for score table
+          if (line.includes('TEAM') && line.includes('R') && line.includes('H') && line.includes('E')) {
+            // Next lines should be team scores
+            const nextLine = lines[i + 1]?.trim() || '';
+            const secondLine = lines[i + 2]?.trim() || '';
+
+            if (nextLine.toLowerCase().startsWith('lsu')) {
+              result.lsuIsHome = false; // LSU listed first = away
+              break;
+            } else if (secondLine.toLowerCase().startsWith('lsu')) {
+              result.lsuIsHome = true; // LSU listed second = home
+              break;
+            }
+          }
+        }
+      }
+
+      // Method 3: Check Top/Bottom inning plays as fallback
+      if (result.lsuIsHome === null) {
+        let lsuInTopCount = 0;
+        let lsuInBottomCount = 0;
+
+        lines.forEach(line => {
+          const lower = line.toLowerCase();
+          if ((lower.startsWith('top ') || lower.startsWith('bot ')) && lower.includes('lsu')) {
+            if (lower.startsWith('top ')) lsuInTopCount++;
+            else lsuInBottomCount++;
+          }
+        });
+
+        if (lsuInTopCount > lsuInBottomCount) {
+          result.lsuIsHome = false; // More Top plays = away
+        } else if (lsuInBottomCount > lsuInTopCount) {
+          result.lsuIsHome = true; // More Bottom plays = home
+        }
+      }
+
+      // Search entire page text for home runs (using allText and lines already defined above)
       lines.forEach((line, idx) => {
         const trimmed = line.trim();
         const lower = trimmed.toLowerCase();
@@ -272,6 +347,7 @@ async function getGameData(gameId) {
 
     console.log(`   ✅ Extracted ${gameData.homeRuns.length} home run(s)`);
     console.log(`   📝 Found ${gameData.plays.length} plays`);
+    console.log(`   🏠 LSU is ${gameData.lsuIsHome === true ? 'HOME' : gameData.lsuIsHome === false ? 'AWAY' : 'UNKNOWN'} team`);
 
     return gameData;
 
@@ -290,16 +366,26 @@ async function getGameData(gameId) {
  * Check if a home run text is from LSU
  * Uses multiple detection methods WITHOUT hardcoded roster
  */
-function isLSUHomeRun(homeRunText, context = {}, allGameText = '') {
+function isLSUHomeRun(homeRunText, context = {}, allGameText = '', lsuIsHome = null) {
   const lower = homeRunText.toLowerCase();
 
   // Method 0: Check if this is from Scoring Plays tab (starts with inning indicator)
-  // "Bot" or "Bottom" = home team (LSU), "Top" = away team (opponent)
-  if (lower.startsWith('bot ') || lower.startsWith('bottom ')) {
-    return true; // LSU is home team, batting in bottom of inning
-  }
-  if (lower.startsWith('top ')) {
-    return false; // Opponent batting in top of inning
+  // Use lsuIsHome to determine which inning LSU bats in
+  if (lsuIsHome !== null) {
+    if (lower.startsWith('bot ') || lower.startsWith('bottom ')) {
+      return lsuIsHome === true; // Bottom = home team
+    }
+    if (lower.startsWith('top ')) {
+      return lsuIsHome === false; // Top = away team
+    }
+  } else {
+    // Fallback: assume LSU is home (old behavior)
+    if (lower.startsWith('bot ') || lower.startsWith('bottom ')) {
+      return true;
+    }
+    if (lower.startsWith('top ')) {
+      return false;
+    }
   }
 
   // Method 1: Direct LSU keywords
@@ -376,7 +462,7 @@ async function checkForLSUHomeRuns(gameIds) {
 
       // Filter for LSU home runs (pass full game text for better detection)
       const lsuHomeRuns = gameData.homeRuns.filter(hr =>
-        isLSUHomeRun(hr.text, hr.context, gameData.rawText)
+        isLSUHomeRun(hr.text, hr.context, gameData.rawText, gameData.lsuIsHome)
       );
 
       if (lsuHomeRuns.length > 0) {

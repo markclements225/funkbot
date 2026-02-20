@@ -544,7 +544,7 @@ async function checkForHomeRuns() {
 
       // Filter for LSU home runs
       const lsuHomeRuns = gameData.homeRuns.filter(hr =>
-        statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText)
+        statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText, gameData.lsuIsHome)
       );
 
       console.log(`   🐯 LSU home runs: ${lsuHomeRuns.length}`);

@@ -52,7 +52,7 @@ async function testLiveScrape() {
   } else {
     gameData.homeRuns.forEach((hr, idx) => {
       console.log(`\n   ${idx + 1}. ${hr.text}`);
-      console.log(`      Is LSU? ${statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText) ? '✅ YES' : '❌ NO'}`);
+      console.log(`      Is LSU? ${statbroadcast.isLSUHomeRun(hr.text, hr.context, gameData.rawText, gameData.lsuIsHome) ? '✅ YES' : '❌ NO'}`);
       if (hr.context.before) {
         console.log(`      Context before: ${hr.context.before.substring(0, 80)}`);
       }
