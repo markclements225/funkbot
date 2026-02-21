@@ -228,60 +228,27 @@ async function getGameData(gameId) {
       const allText = document.body.innerText;
       const lines = allText.split('\n');
 
-      // Method 1: Look for "Home Stats" and "Visitor Stats" tabs/buttons
-      const buttons = document.querySelectorAll('button, [role="tab"]');
-      let homeStatsButton = null;
-      let visitorStatsButton = null;
+      // Method 1: Check score table order (first team = away, second = home)
+      // This is the most reliable method
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // Look for score table
+        if (line.includes('TEAM') && line.includes('R') && line.includes('H') && line.includes('E')) {
+          // Next lines should be team scores
+          const nextLine = lines[i + 1]?.trim() || '';
+          const secondLine = lines[i + 2]?.trim() || '';
 
-      buttons.forEach(btn => {
-        const text = btn.textContent.trim().toLowerCase();
-        if (text === 'home stats') homeStatsButton = btn;
-        if (text === 'visitor stats') visitorStatsButton = btn;
-      });
-
-      // Click Home Stats to see which team it is
-      if (homeStatsButton) {
-        homeStatsButton.click();
-        // Give it a moment to load
-        const startTime = Date.now();
-        while (Date.now() - startTime < 100) {} // Small delay
-
-        // Check if the visible content mentions LSU
-        const bodyText = document.body.innerText.toLowerCase();
-        if (bodyText.includes('lsu') && bodyText.includes('tigers')) {
-          result.lsuIsHome = true;
-        } else {
-          result.lsuIsHome = false;
-        }
-
-        // Switch back to Scoring tab
-        const scoringBtn = Array.from(document.querySelectorAll('button, [role="tab"]'))
-          .find(el => el.textContent.toLowerCase().includes('scoring') && !el.textContent.toLowerCase().includes('card'));
-        if (scoringBtn) scoringBtn.click();
-      }
-
-      // Method 2: Check score table order (first team = away, second = home)
-      if (result.lsuIsHome === null) {
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          // Look for score table
-          if (line.includes('TEAM') && line.includes('R') && line.includes('H') && line.includes('E')) {
-            // Next lines should be team scores
-            const nextLine = lines[i + 1]?.trim() || '';
-            const secondLine = lines[i + 2]?.trim() || '';
-
-            if (nextLine.toLowerCase().startsWith('lsu')) {
-              result.lsuIsHome = false; // LSU listed first = away
-              break;
-            } else if (secondLine.toLowerCase().startsWith('lsu')) {
-              result.lsuIsHome = true; // LSU listed second = home
-              break;
-            }
+          if (nextLine.toLowerCase().startsWith('lsu')) {
+            result.lsuIsHome = false; // LSU listed first = away
+            break;
+          } else if (secondLine.toLowerCase().startsWith('lsu')) {
+            result.lsuIsHome = true; // LSU listed second = home
+            break;
           }
         }
       }
 
-      // Method 3: Check Top/Bottom inning plays as fallback
+      // Method 2: Check Top/Bottom inning plays as fallback
       if (result.lsuIsHome === null) {
         let lsuInTopCount = 0;
         let lsuInBottomCount = 0;
