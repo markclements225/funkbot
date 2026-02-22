@@ -1,6 +1,8 @@
 {
   "comment": "Manually configure which games to monitor",
-  "currentGames": ["651255"],
+  "currentGames": [
+    "651258"
+  ],
   "autoDetect": false,
-  "checkRecentGames": 5
+  "checkRecentGames": 3
 }
