@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cron = require('node-cron');
 const fs = require('fs');
+const path = require('path');
 const statbroadcast = require('./statbroadcast-tracker');
 
 // ==================== CONFIGURATION ====================
@@ -472,11 +473,58 @@ async function getRapidAPIGameForToday() {
 }
 
 /**
- * Build game preview message
- * Tries RapidAPI first for rich data, falls back to StatBroadcast
+ * Build game preview message using schedule data
  */
-async function buildGamePreview(gameId) {
+async function buildGamePreview(gameId, scheduleInfo = null) {
   console.log('📋 Building game day preview...');
+
+  // First try to use schedule data if available
+  if (scheduleInfo) {
+    console.log('   ✅ Using schedule data');
+
+    let message = '🐯 ITS GAMEDAY BOYS!!! 🐯\n\n';
+
+    // Teams (vs for home, at for away)
+    if (scheduleInfo.home) {
+      message += `LSU vs ${scheduleInfo.opponent}\n`;
+    } else {
+      message += `LSU at ${scheduleInfo.opponent}\n`;
+    }
+
+    // Location and ballpark
+    if (scheduleInfo.location) {
+      message += `📍 ${scheduleInfo.location}`;
+      if (scheduleInfo.ballpark) {
+        message += `\n🏟️ ${scheduleInfo.ballpark}`;
+      }
+      message += '\n';
+    }
+
+    // Game time
+    if (scheduleInfo.time) {
+      message += `🕐 ${scheduleInfo.time} CT\n`;
+    }
+
+    message += '\nTime to get FUNKY! 🟣🟡\n\n';
+    message += 'GEAUX TIGERS!!!';
+
+    // Try to parse time for scheduling
+    let gameTime = null;
+    if (scheduleInfo.time && scheduleInfo.date) {
+      try {
+        const timeStr = scheduleInfo.time.replace(/\s*(AM|PM)\s*CT?/i, ' $1');
+        const dateTimeStr = `${scheduleInfo.date} ${timeStr}`;
+        gameTime = new Date(dateTimeStr);
+        if (isNaN(gameTime.getTime())) {
+          gameTime = null;
+        }
+      } catch (err) {
+        gameTime = null;
+      }
+    }
+
+    return { message, gameTime, scheduleInfo };
+  }
 
   // Try to get rich data from RapidAPI
   const rapidAPIGame = await getRapidAPIGameForToday();
@@ -498,7 +546,7 @@ async function buildGamePreview(gameId) {
     });
 
     // Build rich message
-    let message = '🐯 ITS GAMEDAY YALL!!! 🐯\n\n';
+    let message = '🐯 ITS GAMEDAY BOYS!!! 🐯\n\n';
 
     // Teams and records (only show records if they exist)
     if (lsuIsHome) {
@@ -524,12 +572,12 @@ async function buildGamePreview(gameId) {
   }
 
   // Fallback: Use StatBroadcast data (basic)
-  console.log('   ⚠️  Using basic game preview (no RapidAPI data)');
+  console.log('   ⚠️  Using basic game preview (no data)');
   const gameData = await getGameData(gameId);
 
   if (!gameData) {
     return {
-      message: '🐯 ITS GAMEDAY YALL!!! 🐯\n\nLSU Baseball is ON today! Time to get FUNKY! 🟣🟡\n\nGEAUX TIGERS!!!',
+      message: '🐯 ITS GAMEDAY BOYS!!! 🐯\n\nLSU Baseball is ON today! Time to get FUNKY! 🟣🟡\n\nGEAUX TIGERS!!!',
       gameTime: null,
       rapidAPIData: null
     };
@@ -537,7 +585,7 @@ async function buildGamePreview(gameId) {
 
   // Extract opponent from title if possible
   const title = gameData.title || 'LSU Baseball';
-  let message = '🐯 ITS GAMEDAY YALL!!! 🐯\n\n';
+  let message = '🐯 ITS GAMEDAY BOYS!!! 🐯\n\n';
   message += `${title}\n\n`;
   message += 'Time to get FUNKY! 🟣🟡\n\n';
   message += 'GEAUX TIGERS!!!';
@@ -699,8 +747,20 @@ async function checkForGameToday(shouldPost = true) {
   console.log(`✅ Found ${gameIds.length} LSU game(s) in schedule!`);
   console.log(`   Game IDs: ${gameIds.join(', ')}`);
 
-  // Build game preview (tries RapidAPI for rich data)
-  const preview = await buildGamePreview(gameIds[0]);
+  // Load schedule to get full game info
+  let scheduleInfo = null;
+  try {
+    const schedulePath = path.join(__dirname, '..', 'config', 'lsu-schedule-2026.json');
+    if (fs.existsSync(schedulePath)) {
+      const schedule = JSON.parse(fs.readFileSync(schedulePath, 'utf-8'));
+      scheduleInfo = schedule.find(game => game.gameId === gameIds[0]);
+    }
+  } catch (err) {
+    console.log('   ⚠️  Could not load schedule info');
+  }
+
+  // Build game preview (tries schedule first, then RapidAPI, then StatBroadcast)
+  const preview = await buildGamePreview(gameIds[0], scheduleInfo);
   const gameMessage = preview.message || preview; // Handle old string format or new object format
   const gameTime = preview.gameTime;
 

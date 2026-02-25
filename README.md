@@ -5,9 +5,11 @@ FunkBot is an automated bot that tracks LSU Baseball home runs in real-time and 
 ## 🚀 Features
 
 - **Real-time Home Run Detection** - Scrapes StatBroadcast every 60 seconds during games
-- **Daily Game Day Alerts** - Posts to GroupMe at 8:00 AM CST when LSU has a game
+- **Accurate Home/Away Detection** - Uses score table to correctly identify LSU home runs
+- **Daily Game Day Alerts** - Posts rich game info to GroupMe at 8:00 AM CST
+- **Smart Startup Detection** - Checks for ongoing games on redeploy and starts monitoring
 - **AI-Powered Chat** - Responds to @FunkBot mentions with Perplexity AI
-- **Smart Date Detection** - Automatically finds today's games using schedule data
+- **Rich Schedule Data** - Includes opponent, time, location, and ballpark info
 - **Deployment Notifications** - Posts to GroupMe when successfully deployed
 
 ## 📁 Project Structure
@@ -28,11 +30,11 @@ funk-bot/
 │
 ├── tests/                         # Test scripts
 │   ├── test-current-games.js      # Test current game detection
-│   ├── test-date-detection.js     # Test date-based game finding
-│   ├── test-full-flow.js          # Test complete flow
-│   ├── test-live-scrape.js        # Test live game scraping
-│   ├── test-message-formats.js    # Show all message formats
-│   └── test-scheduler-behavior.js # Test scheduler logic
+│   ├── test-game-lookup.js        # Test game data extraction
+│   ├── test-live-detection.js     # Test live game detection
+│   ├── test-startup-flow.js       # Test startup game check
+│   ├── verify-todays-game.js      # Verify game configuration
+│   └── (other test files)         # Additional test utilities
 │
 ├── assets/                        # Static assets
 │   └── FunkBlastoise.jpg          # Home run celebration image
@@ -114,9 +116,10 @@ The bot is configured to deploy automatically to Railway:
 ### Home Run Monitoring (Every 60 seconds)
 1. Uses Puppeteer to load StatBroadcast game page
 2. Clicks "Scoring Plays" tab
-3. Extracts home run data
-4. Filters for LSU home runs (Bot = LSU, Top = opponent)
-5. Posts FUNKY message to GroupMe with FunkBlastoise image
+3. Detects home/away using score table (first team = away, second = home)
+4. Extracts home run data
+5. Filters for LSU home runs based on Top/Bottom inning and home/away status
+6. Posts FUNKY message to GroupMe with FunkBlastoise image
 
 ### Midnight Cleanup (12:00 AM CST)
 - Stops monitoring to reset for next day
@@ -131,9 +134,12 @@ FUNKY and ready to track LSU home runs! 🐯⚾
 
 ### Game Day Alert
 ```
-🐯 ITS GAMEDAY YALL!!! 🐯
+🐯 ITS GAMEDAY BOYS!!! 🐯
 
-LSU vs Nicholls
+LSU vs Dartmouth
+📍 Baton Rouge, LA
+🏟️ Alex Box Stadium, Skip Bertman Field
+🕐 6:30 PM CT
 
 Time to get FUNKY! 🟣🟡
 

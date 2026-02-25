@@ -1,282 +1,227 @@
 [
   {
-    "gameId": "632797",
-    "date": "2026-02-13",
-    "opponent": "Milwaukee"
-  },
-  {
-    "gameId": "632798",
-    "date": "2026-02-14",
-    "opponent": "Milwaukee"
-  },
-  {
-    "gameId": "632799",
-    "date": "2026-02-15",
-    "opponent": "Milwaukee"
-  },
-  {
-    "gameId": "632805",
-    "date": "2026-02-16",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632807",
-    "date": "2026-02-18",
-    "opponent": "Nicholls"
-  },
-  {
-    "gameId": "636910",
-    "date": "2026-02-20",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "633584",
-    "date": "2026-02-21",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632800",
-    "date": "2026-02-22",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632806",
-    "date": "2026-02-24",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632808",
     "date": "2026-02-27",
-    "opponent": "TBD"
+    "opponent": "Dartmouth",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632808"
   },
   {
-    "gameId": "632809",
     "date": "2026-02-28",
-    "opponent": "TBD"
+    "time": "2:00 PM",
+    "opponent": "Northeastern",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632811"
   },
   {
-    "gameId": "632810",
     "date": "2026-03-01",
-    "opponent": "TBD"
+    "opponent": "Dartmouth",
+    "time": "1:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632810"
   },
   {
-    "gameId": "632811",
     "date": "2026-03-02",
-    "opponent": "TBD"
+    "opponent": "Northeastern",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632811"
   },
   {
-    "gameId": "627863",
     "date": "2026-03-04",
-    "opponent": "TBD"
+    "opponent": "UL-Lafayette",
+    "time": "6:00 PM",
+    "home": false,
+    "location": "Lafayette, LA",
+    "ballpark": "M.L. \"Tigue\" Moore Field at Russo Park",
+    "gameId": "627863"
   },
   {
-    "gameId": "632812",
     "date": "2026-03-06",
-    "opponent": "TBD"
+    "opponent": "Sacramento State",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632812"
   },
   {
-    "gameId": "632813",
     "date": "2026-03-07",
-    "opponent": "TBD"
+    "opponent": "Sacramento State",
+    "time": "6:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632813"
   },
   {
-    "gameId": "632814",
     "date": "2026-03-08",
-    "opponent": "TBD"
+    "opponent": "Sacramento State",
+    "time": "1:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632814"
   },
   {
-    "gameId": "632815",
     "date": "2026-03-10",
-    "opponent": "TBD"
+    "opponent": "Creighton",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632815"
   },
   {
-    "gameId": "636386",
     "date": "2026-03-13",
-    "opponent": "TBD"
+    "opponent": "Vanderbilt",
+    "time": "6:00 PM",
+    "home": false,
+    "location": "Nashville, TN",
+    "ballpark": "Charles Hawkins Field",
+    "gameId": "636386"
   },
   {
-    "gameId": "636387",
     "date": "2026-03-14",
-    "opponent": "TBD"
+    "opponent": "Vanderbilt",
+    "time": "7:00 PM",
+    "home": false,
+    "location": "Nashville, TN",
+    "ballpark": "Charles Hawkins Field",
+    "gameId": "636387"
   },
   {
-    "gameId": "636388",
     "date": "2026-03-15",
-    "opponent": "TBD"
+    "opponent": "Vanderbilt",
+    "time": "3:00 PM",
+    "home": false,
+    "location": "Nashville, TN",
+    "ballpark": "Charles Hawkins Field",
+    "gameId": "636388"
   },
   {
-    "gameId": "632816",
     "date": "2026-03-17",
-    "opponent": "TBD"
+    "opponent": "Grambling State",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632816"
   },
   {
-    "gameId": "632819",
     "date": "2026-03-19",
-    "opponent": "TBD"
+    "opponent": "Oklahoma",
+    "time": "7:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632819"
   },
   {
-    "gameId": "632817",
     "date": "2026-03-20",
-    "opponent": "TBD"
+    "opponent": "Oklahoma",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632817"
   },
   {
-    "gameId": "632818",
     "date": "2026-03-21",
-    "opponent": "TBD"
+    "opponent": "Oklahoma",
+    "time": "2:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632818"
   },
   {
-    "gameId": "629496",
     "date": "2026-03-24",
-    "opponent": "TBD"
+    "opponent": "Louisiana Tech",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "629496"
   },
   {
-    "gameId": "632820",
     "date": "2026-03-27",
-    "opponent": "TBD"
+    "opponent": "Kentucky",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632820"
   },
   {
-    "gameId": "632821",
     "date": "2026-03-28",
-    "opponent": "TBD"
+    "opponent": "Kentucky",
+    "time": "2:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632821"
   },
   {
-    "gameId": "632822",
     "date": "2026-03-29",
-    "opponent": "TBD"
+    "opponent": "Kentucky",
+    "time": "12:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632822"
   },
   {
-    "gameId": "632823",
     "date": "2026-03-31",
-    "opponent": "TBD"
+    "opponent": "Southern",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632823"
   },
   {
-    "gameId": "635445",
     "date": "2026-04-03",
-    "opponent": "TBD"
+    "opponent": "Tennessee",
+    "time": "4:30 PM",
+    "home": false,
+    "location": "Knoxville, TN",
+    "ballpark": "Lindsey Nelson Stadium",
+    "gameId": "635445"
   },
   {
-    "gameId": "635446",
     "date": "2026-04-04",
-    "opponent": "TBD"
+    "opponent": "Tennessee",
+    "time": "5:00 PM",
+    "home": false,
+    "location": "Knoxville, TN",
+    "ballpark": "Lindsey Nelson Stadium",
+    "gameId": "635446"
   },
   {
-    "gameId": "635447",
     "date": "2026-04-05",
-    "opponent": "TBD"
+    "opponent": "Tennessee",
+    "time": "12:00 PM",
+    "home": false,
+    "location": "Knoxville, TN",
+    "ballpark": "Lindsey Nelson Stadium",
+    "gameId": "635447"
   },
   {
-    "gameId": "632824",
     "date": "2026-04-07",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "634064",
-    "date": "2026-04-10",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "634065",
-    "date": "2026-04-11",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "634066",
-    "date": "2026-04-12",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632793",
-    "date": "2026-04-14",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632825",
-    "date": "2026-04-17",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632826",
-    "date": "2026-04-18",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632827",
-    "date": "2026-04-19",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632828",
-    "date": "2026-04-21",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "633273",
-    "date": "2026-04-24",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "633274",
-    "date": "2026-04-25",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "633275",
-    "date": "2026-04-26",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632804",
-    "date": "2026-04-28",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632794",
-    "date": "2026-05-01",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632795",
-    "date": "2026-05-02",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632796",
-    "date": "2026-05-03",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "630312",
-    "date": "2026-05-05",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "631903",
-    "date": "2026-05-08",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "631904",
-    "date": "2026-05-09",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "631905",
-    "date": "2026-05-10",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632801",
-    "date": "2026-05-14",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632802",
-    "date": "2026-05-15",
-    "opponent": "TBD"
-  },
-  {
-    "gameId": "632803",
-    "date": "2026-05-16",
-    "opponent": "TBD"
+    "opponent": "Bethune-Cookman",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632824"
   }
 ]

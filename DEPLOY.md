@@ -105,12 +105,13 @@ The system will:
 
 1. **Startup (immediately):**
    - Post deployment success to GroupMe
-   - Run initial game check (doesn't post)
+   - Check for ongoing games
+   - Start monitoring if game is currently live
 
 2. **Daily at 8:00 AM CST:**
-   - Check for today's games
-   - Post game day alert
-   - Schedule monitoring
+   - Check for today's games in schedule
+   - Post game day alert with rich info (opponent, time, location, ballpark)
+   - Schedule monitoring based on game time
 
 3. **During Game:**
    - Start monitoring 5 min before first pitch
