@@ -148,7 +148,7 @@ GEAUX TIGERS!!!
 
 ### Home Run Alert
 ```
-🎉 LSU HOME RUN! 🟣🟡
+PUCKER UP AND KISS THAT BABY GOODBYE!!!
 
 Caraway FUNKBLAST!!! The Tigers score 4 runs on the home run
 to left field!!! LETS GET FUNKY!!!

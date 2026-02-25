@@ -157,7 +157,7 @@ The system will:
 
 3. **During Game** - Home runs posted as they happen
    ```
-   🎉 LSU HOME RUN! 🟣🟡
+   PUCKER UP AND KISS THAT BABY GOODBYE!!!
 
    Player FUNKBLAST!!! The Tigers score X runs on the
    home run to left field!!! LETS GET FUNKY!!!

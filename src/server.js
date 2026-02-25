@@ -648,7 +648,7 @@ async function checkForHomeRuns() {
 
           // Post to GroupMe
           const imageUrl = await uploadImageToGroupMe('./assets/FunkBlastoise.jpg');
-          const message = `🎉 LSU HOME RUN! 🟣🟡\n\n${cleanText}`;
+          const message = `PUCKER UP AND KISS THAT BABY GOODBYE!!!\n\n${cleanText}`;
 
           if (imageUrl) {
             await postToGroupMe(message, imageUrl);
