@@ -1,5 +1,46 @@
 # 🔄 Recent Changes & Updates
 
+## Version 2.2 - February 2026
+
+### 🌤️ Weather Forecasts Added
+
+#### New Features
+- **Weather Integration**: Game day alerts now include weather forecasts
+  - High/low temperatures
+  - Chance of rain
+  - Weather conditions (sunny, cloudy, etc.)
+- **Graceful Fallback**: If weather API fails or is unavailable, game alert continues without weather
+- **Multiple Data Sources**: Works with both schedule data and RapidAPI fallback
+
+#### New Message Format
+```
+🐯 ITS GAMEDAY BOYS!!! 🐯
+
+LSU vs Dartmouth
+📍 Baton Rouge, LA
+🏟️ Alex Box Stadium, Skip Bertman Field
+🕐 6:30 PM CT
+☀️ High 73°F, Low 55°F, 10% rain, Partly cloudy
+
+Time to get FUNKY! 🟣🟡
+
+GEAUX TIGERS!!!
+```
+
+#### Home Run Alert Updated
+- Changed header from "🎉 LSU HOME RUN! 🟣🟡" to "PUCKER UP AND KISS THAT BABY GOODBYE!!!"
+
+#### Files Changed
+- `src/server.js` - Added `getWeatherForecast()` function and integrated into `buildGamePreview()`
+- `tests/test-weather-integration.js` - New test file for weather API
+- `package.json` - Added `test-weather` script
+- `.env` - Added `WEATHER_API_KEY` variable
+- `README.md` - Updated features and environment variables
+- `DEPLOY.md` - Updated optional variables and expectations
+- `CHANGES.md` - This file
+
+---
+
 ## Version 2.1 - February 2026
 
 ### 🎯 Major Improvements

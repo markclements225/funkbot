@@ -7,6 +7,7 @@ FunkBot is an automated bot that tracks LSU Baseball home runs in real-time and 
 - **Real-time Home Run Detection** - Scrapes StatBroadcast every 60 seconds during games
 - **Accurate Home/Away Detection** - Uses score table to correctly identify LSU home runs
 - **Daily Game Day Alerts** - Posts rich game info to GroupMe at 8:00 AM CST
+- **Weather Forecasts** - Includes game day weather (high/low temps, rain chance, conditions)
 - **Smart Startup Detection** - Checks for ongoing games on redeploy and starts monitoring
 - **AI-Powered Chat** - Responds to @FunkBot mentions with Perplexity AI
 - **Rich Schedule Data** - Includes opponent, time, location, and ballpark info
@@ -75,6 +76,9 @@ GROUPME_ACCESS_TOKEN=your_access_token
 # AI
 PERPLEXITY_API_KEY=your_api_key
 
+# Weather (optional - for game day forecasts)
+WEATHER_API_KEY=your_weatherapi_key
+
 # Railway (optional - auto-set by Railway)
 PORT=3000
 RAILWAY_ENVIRONMENT=production
@@ -140,6 +144,7 @@ LSU vs Dartmouth
 📍 Baton Rouge, LA
 🏟️ Alex Box Stadium, Skip Bertman Field
 🕐 6:30 PM CT
+☀️ High 73°F, Low 55°F, 10% rain, Partly cloudy
 
 Time to get FUNKY! 🟣🟡
 
@@ -169,6 +174,9 @@ npm run test-live
 
 # Show all message formats
 npm run test-messages
+
+# Test weather integration
+npm run test-weather
 
 # Manually set today's game
 npm run set-game 632807

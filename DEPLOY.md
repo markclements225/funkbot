@@ -61,6 +61,7 @@ PERPLEXITY_API_KEY=your_perplexity_key_here
 ```
 RAPIDAPI_KEY=your_rapidapi_key_here
 LSU_TEAM_ID=10291565
+WEATHER_API_KEY=your_weatherapi_key_here
 ```
 
 **To add variables:**
@@ -150,7 +151,7 @@ The system will:
 
 **Saturday/Sunday Game Day:**
 1. **8:00 AM CST** - Game day alert posted
-   - With RapidAPI: Full info (time, location, records)
+   - With Schedule: Full info (time, location, ballpark, weather)
    - Without: Basic (opponent only)
 
 2. **~5:55 PM CST** - Monitoring starts (5 min before game)

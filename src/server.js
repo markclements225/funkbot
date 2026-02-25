@@ -12,6 +12,8 @@ const PERPLEXITY_API_KEY = process.env.PERPLEXITY_API_KEY;
 // RapidAPI for game metadata (times, locations, records)
 const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY;
 const LSU_TEAM_ID = process.env.LSU_TEAM_ID || '10291565';
+// Weather API for game day forecasts
+const WEATHER_API_KEY = process.env.WEATHER_API_KEY;
 
 const POSTED_HRS_FILE = './config/posted_home_runs.json';
 let postedHomeRuns = new Set();
@@ -473,6 +475,51 @@ async function getRapidAPIGameForToday() {
 }
 
 /**
+ * Get weather forecast for game location and date
+ * Returns formatted weather string or null if unavailable
+ */
+async function getWeatherForecast(location, date) {
+  if (!WEATHER_API_KEY || !location) {
+    return null;
+  }
+
+  try {
+    console.log(`   🌤️  Fetching weather for ${location}...`);
+
+    const response = await fetch(
+      `https://api.weatherapi.com/v1/forecast.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(location)}&dt=${date}&aqi=no`,
+      { timeout: 5000 }
+    );
+
+    if (!response.ok) {
+      console.log(`   ⚠️  Weather API returned ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.forecast?.forecastday?.[0]) {
+      console.log('   ⚠️  No forecast data available');
+      return null;
+    }
+
+    const forecast = data.forecast.forecastday[0].day;
+    const highF = Math.round(forecast.maxtemp_f);
+    const lowF = Math.round(forecast.mintemp_f);
+    const rainChance = forecast.daily_chance_of_rain || 0;
+    const condition = forecast.condition.text;
+
+    const weatherStr = `☀️ High ${highF}°F, Low ${lowF}°F, ${rainChance}% rain, ${condition}`;
+    console.log(`   ✅ Weather: ${weatherStr}`);
+
+    return weatherStr;
+  } catch (error) {
+    console.log(`   ⚠️  Weather fetch error: ${error.message}`);
+    return null;
+  }
+}
+
+/**
  * Build game preview message using schedule data
  */
 async function buildGamePreview(gameId, scheduleInfo = null) {
@@ -503,6 +550,14 @@ async function buildGamePreview(gameId, scheduleInfo = null) {
     // Game time
     if (scheduleInfo.time) {
       message += `🕐 ${scheduleInfo.time} CT\n`;
+    }
+
+    // Weather forecast
+    if (scheduleInfo.location && scheduleInfo.date) {
+      const weather = await getWeatherForecast(scheduleInfo.location, scheduleInfo.date);
+      if (weather) {
+        message += `${weather}\n`;
+      }
     }
 
     message += '\nTime to get FUNKY! 🟣🟡\n\n';
@@ -564,8 +619,18 @@ async function buildGamePreview(gameId, scheduleInfo = null) {
       message += `🏟️ ${rapidAPIGame.venue.name}\n`;
     }
 
-    message += `🕐 ${timeString} CST\n\n`;
-    message += 'Time to get FUNKY! 🟣🟡\n\n';
+    message += `🕐 ${timeString} CST\n`;
+
+    // Weather forecast (if venue has city/location)
+    if (rapidAPIGame.venue?.city) {
+      const dateStr = gameTime.toISOString().split('T')[0];
+      const weather = await getWeatherForecast(rapidAPIGame.venue.city, dateStr);
+      if (weather) {
+        message += `${weather}\n`;
+      }
+    }
+
+    message += '\nTime to get FUNKY! 🟣🟡\n\n';
     message += 'GEAUX TIGERS!!!';
 
     return { message, gameTime: rapidAPIGame.date, rapidAPIData: rapidAPIGame };

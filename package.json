@@ -8,6 +8,7 @@
     "test-flow": "node tests/test-full-flow.js",
     "test-live": "node tests/test-live-scrape.js",
     "test-messages": "node tests/test-message-formats.js",
+    "test-weather": "node tests/test-weather-integration.js",
     "set-game": "node scripts/set-todays-game.js"
   },
   "keywords": [
