@@ -956,7 +956,6 @@ async function startServer() {
           if (!foundLiveGame) {
             console.log('\n⏰ No live games at this time.');
             console.log('   Waiting for 8:00 AM CST scheduler to check for games...');
-            console.log('   (or manually add game to config/game-config.json to start now)');
           }
         } catch (error) {
           console.error('❌ Error during startup game check:', error);

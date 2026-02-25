@@ -42,62 +42,40 @@ async function getTodaysGameIDs() {
     const fs = require('fs');
     const path = require('path');
 
-    // Try to load manual config first
-    const configPath = path.join(__dirname, '..', 'config', 'game-config.json');
+    // Load the schedule file (ONLY source of truth)
+    const schedulePath = path.join(__dirname, '..', 'config', 'lsu-schedule-2026.json');
 
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-
-      if (config.currentGames && config.currentGames.length > 0) {
-        console.log(`   ✅ Using manually configured games: ${config.currentGames.join(', ')}`);
-        return config.currentGames;
-      }
-
-      if (config.autoDetect) {
-        // Load the schedule file
-        const schedulePath = path.join(__dirname, '..', 'config', 'lsu-schedule-2026.json');
-
-        if (fs.existsSync(schedulePath)) {
-          console.log('   🔍 Auto-detect mode: checking schedule for today\'s games');
-
-          const schedule = JSON.parse(fs.readFileSync(schedulePath, 'utf-8'));
-
-          // Get today's date in YYYY-MM-DD format
-          const today = new Date();
-          const todayStr = today.toISOString().split('T')[0]; // "2026-02-18"
-
-          // Find games for today
-          const todaysGames = schedule
-            .filter(game => game.date === todayStr)
-            .map(game => game.gameId);
-
-          if (todaysGames.length > 0) {
-            console.log(`   ✅ Found ${todaysGames.length} game(s) scheduled for today (${todayStr})`);
-            console.log(`   📊 Will monitor: ${todaysGames.join(', ')}`);
-            return todaysGames;
-          }
-
-          // No games today
-          console.log(`   ⚠️  No games scheduled for ${todayStr}`);
-          console.log('   💡 TIP: Add game manually to game-config.json if needed');
-          return [];
-        }
-
-        // Schedule file doesn't exist - return empty array
-        console.log('   ⚠️  Schedule file not found');
-        console.log('   💡 TIP: Create config/lsu-schedule-2026.json or use game-config.json');
-        return [];
-      }
+    if (!fs.existsSync(schedulePath)) {
+      console.log('   ⚠️  Schedule file not found');
+      console.log('   💡 TIP: Create config/lsu-schedule-2026.json');
+      return [];
     }
 
-    // No config found - return empty array
-    console.log('   ⚠️  No config found');
-    console.log('   💡 TIP: Create config/game-config.json and config/lsu-schedule-2026.json');
+    console.log('   🔍 Checking schedule for today\'s games');
+
+    const schedule = JSON.parse(fs.readFileSync(schedulePath, 'utf-8'));
+
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Find games for today
+    const todaysGames = schedule
+      .filter(game => game.date === todayStr)
+      .map(game => game.gameId);
+
+    if (todaysGames.length > 0) {
+      console.log(`   ✅ Found ${todaysGames.length} game(s) scheduled for today (${todayStr})`);
+      console.log(`   📊 Will monitor: ${todaysGames.join(', ')}`);
+      return todaysGames;
+    }
+
+    // No games today
+    console.log(`   ⚠️  No games scheduled for ${todayStr}`);
     return [];
 
   } catch (error) {
     console.error('❌ Error getting games:', error);
-    // Don't fall back to random games - return empty array
     return [];
   }
 }

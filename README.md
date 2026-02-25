@@ -22,12 +22,8 @@ funk-bot/
 │   └── statbroadcast-tracker.js   # StatBroadcast scraping logic
 │
 ├── config/                        # Configuration files
-│   ├── game-config.json           # Manual game configuration
 │   ├── lsu-schedule-2026.json     # LSU 2026 baseball schedule
 │   └── posted_home_runs.json      # Tracks posted HRs (auto-generated)
-│
-├── scripts/                       # Utility scripts
-│   └── set-todays-game.js         # Helper to manually set game IDs
 │
 ├── tests/                         # Test scripts
 │   ├── test-current-games.js      # Test current game detection
@@ -96,8 +92,8 @@ npm start
 # Or run specific scripts
 npm run test-flow       # Test complete flow
 npm run test-live       # Test live scraping
-npm run set-game        # Manually set game ID
 npm run test-messages   # Show message formats
+npm run test-weather    # Test weather integration
 ```
 
 ## 🚂 Deployment (Railway)
@@ -113,8 +109,8 @@ The bot is configured to deploy automatically to Railway:
 ## 📅 How It Works
 
 ### Daily Schedule (8:00 AM CST)
-1. Checks `config/lsu-schedule-2026.json` for today's games
-2. Posts "GAMEDAY" alert to GroupMe if game found
+1. Checks `config/lsu-schedule-2026.json` for today's games (ONLY source of truth)
+2. Posts "GAMEDAY" alert to GroupMe with weather forecast if game found
 3. Starts home run monitoring
 
 ### Home Run Monitoring (Every 60 seconds)
@@ -178,30 +174,9 @@ npm run test-messages
 # Test weather integration
 npm run test-weather
 
-# Manually set today's game
-npm run set-game 632807
-
 # Or run individual test files
 node tests/test-current-games.js
 node tests/test-date-detection.js
-```
-
-## 🔧 Manual Game Configuration
-
-If auto-detection isn't working, manually set game IDs:
-
-```bash
-# Set specific game
-npm run set-game 632807
-
-# Set multiple games
-npm run set-game 632807 632808
-
-# Return to auto-detect
-npm run set-game auto
-
-# Clear all games
-npm run set-game clear
 ```
 
 ## 📊 Monitoring

@@ -2,6 +2,13 @@
 
 ## Version 2.2 - February 2026
 
+### 🔥 Breaking Changes
+- **Removed Manual Override System**: The bot now ONLY uses the schedule file (`lsu-schedule-2026.json`)
+  - Deleted `config/game-config.json` file
+  - Archived `scripts/set-todays-game.js` script
+  - Removed all manual game configuration logic from code
+  - Game detection is now 100% schedule-driven with no hardcoded overrides
+
 ### 🌤️ Weather Forecasts Added
 
 #### New Features
@@ -31,11 +38,14 @@ GEAUX TIGERS!!!
 - Changed header from "🎉 LSU HOME RUN! 🟣🟡" to "PUCKER UP AND KISS THAT BABY GOODBYE!!!"
 
 #### Files Changed
-- `src/server.js` - Added `getWeatherForecast()` function and integrated into `buildGamePreview()`
+- `src/statbroadcast-tracker.js` - Removed all manual override logic, now ONLY reads from schedule
+- `src/server.js` - Removed reference to manual config, added `getWeatherForecast()` and integrated into `buildGamePreview()`
+- `config/game-config.json` - **DELETED** (no longer used)
+- `scripts/set-todays-game.js` - **ARCHIVED** (no longer needed)
 - `tests/test-weather-integration.js` - New test file for weather API
-- `package.json` - Added `test-weather` script
+- `package.json` - Added `test-weather` script, removed `set-game` script
 - `.env` - Added `WEATHER_API_KEY` variable
-- `README.md` - Updated features and environment variables
+- `README.md` - Updated features, removed manual override docs
 - `DEPLOY.md` - Updated optional variables and expectations
 - `CHANGES.md` - This file
 
