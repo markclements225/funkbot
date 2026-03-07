@@ -55,9 +55,11 @@ async function getTodaysGameIDs() {
 
     const schedule = JSON.parse(fs.readFileSync(schedulePath, 'utf-8'));
 
-    // Get today's date in YYYY-MM-DD format
+    // Get today's date in YYYY-MM-DD format (Central Time, not UTC!)
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = new Date(today.toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+      .toISOString()
+      .split('T')[0];
 
     // Find games for today
     const todaysGames = schedule
