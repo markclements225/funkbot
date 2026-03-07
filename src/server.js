@@ -567,13 +567,24 @@ async function buildGamePreview(gameId, scheduleInfo = null) {
     let gameTime = null;
     if (scheduleInfo.time && scheduleInfo.date) {
       try {
-        const timeStr = scheduleInfo.time.replace(/\s*(AM|PM)\s*CT?/i, ' $1');
-        const dateTimeStr = `${scheduleInfo.date} ${timeStr}`;
-        gameTime = new Date(dateTimeStr);
+        // Parse time in Central Time (schedule times are always CT)
+        // Extract time components (e.g., "2:00 PM" -> 2, 00, PM)
+        const [timeDigits, period] = scheduleInfo.time.match(/(\d+:\d+)\s*(AM|PM)/i).slice(1);
+        let [hours, minutes] = timeDigits.split(':').map(Number);
+
+        // Convert to 24-hour format
+        if (period.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+        if (period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+        // Create date in CST/CDT (America/Chicago)
+        const isoString = `${scheduleInfo.date}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-06:00`;
+        gameTime = new Date(isoString);
+
         if (isNaN(gameTime.getTime())) {
           gameTime = null;
         }
       } catch (err) {
+        console.log('   ⚠️  Error parsing game time:', err.message);
         gameTime = null;
       }
     }
@@ -799,8 +810,12 @@ async function checkForOngoingGames() {
 }
 
 async function checkForGameToday(shouldPost = true) {
-  const today = new Date().toISOString().split('T')[0];
-  console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${today}...`);
+  // Get today's date in Central Time (not UTC!)
+  const today = new Date();
+  const todayStr = new Date(today.toLocaleString('en-US', { timeZone: 'America/Chicago' }))
+    .toISOString()
+    .split('T')[0];
+  console.log(`\n[${new Date().toLocaleString()}] 📅 Daily check: Looking for LSU games on ${todayStr}...`);
 
   const gameIds = await getLSUGameIDs();
 
@@ -955,7 +970,16 @@ async function startServer() {
 
           if (!foundLiveGame) {
             console.log('\n⏰ No live games at this time.');
-            console.log('   Waiting for 8:00 AM CST scheduler to check for games...');
+
+            // Check if there's a game scheduled for today and reschedule monitoring
+            // This handles cases where game time changed after 8am scheduler ran
+            const gameIds = await getLSUGameIDs();
+            if (gameIds.length > 0) {
+              console.log('   📅 Found game(s) scheduled for today - rescheduling monitoring...');
+              await checkForGameToday(false); // false = don't post announcement again
+            } else {
+              console.log('   Waiting for 8:00 AM CST scheduler to check for games...');
+            }
           }
         } catch (error) {
           console.error('❌ Error during startup game check:', error);
