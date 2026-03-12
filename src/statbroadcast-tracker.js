@@ -7,6 +7,42 @@
 
 const puppeteer = require('puppeteer');
 
+// Shared browser instance to avoid resource exhaustion
+let sharedBrowser = null;
+
+/**
+ * Get or create the shared browser instance
+ * Reusing a single browser reduces memory/process usage significantly
+ */
+async function getSharedBrowser() {
+  if (sharedBrowser && sharedBrowser.isConnected()) {
+    return sharedBrowser;
+  }
+
+  console.log('🚀 Launching shared browser instance...');
+  sharedBrowser = await launchBrowser();
+  console.log('✅ Shared browser ready');
+
+  // Handle browser disconnection
+  sharedBrowser.on('disconnected', () => {
+    console.log('⚠️  Browser disconnected, will recreate on next use');
+    sharedBrowser = null;
+  });
+
+  return sharedBrowser;
+}
+
+/**
+ * Close the shared browser instance (call on shutdown)
+ */
+async function closeSharedBrowser() {
+  if (sharedBrowser) {
+    console.log('🛑 Closing shared browser...');
+    await sharedBrowser.close();
+    sharedBrowser = null;
+  }
+}
+
 /**
  * Get all LSU game IDs from LSU's official schedule
  * These IDs are available weeks in advance
@@ -120,13 +156,14 @@ async function launchBrowser() {
  * Get game data from StatBroadcast using Puppeteer
  */
 async function getGameData(gameId) {
-  let browser;
+  let page;
 
   try {
     console.log(`\n🌐 Fetching game ${gameId} from StatBroadcast...`);
 
-    browser = await launchBrowser();
-    const page = await browser.newPage();
+    // Use shared browser instance instead of launching new one each time
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
 
     // Block unnecessary resources to speed up loading and reduce memory
     await page.setRequestInterception(true);
@@ -303,8 +340,9 @@ async function getGameData(gameId) {
     return null;
 
   } finally {
-    if (browser) {
-      await browser.close();
+    // Close the page but keep the browser running for reuse
+    if (page) {
+      await page.close().catch(err => console.log('   ⚠️  Error closing page:', err.message));
     }
   }
 }
@@ -442,5 +480,6 @@ module.exports = {
   getTodaysGameIDs,
   getGameData,
   checkForLSUHomeRuns,
-  isLSUHomeRun
+  isLSUHomeRun,
+  closeSharedBrowser
 };

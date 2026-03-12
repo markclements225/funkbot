@@ -1001,4 +1001,20 @@ process.on('unhandledRejection', (error) => {
   console.error('❌ Unhandled Rejection:', error);
 });
 
+// Graceful shutdown - close browser to free resources
+async function shutdown(signal) {
+  console.log(`\n${signal} received - shutting down gracefully...`);
+  try {
+    await statbroadcast.closeSharedBrowser();
+    console.log('✅ Cleanup complete');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 startServer();
