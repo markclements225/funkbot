@@ -216,12 +216,174 @@
     "gameId": "635447"
   },
   {
-    "date": "2026-04-07",
+    "date": "2026-05-01",
     "opponent": "Bethune-Cookman",
     "time": "6:30 PM",
     "home": true,
     "location": "Baton Rouge, LA",
     "ballpark": "Alex Box Stadium, Skip Bertman Field",
     "gameId": "632824"
+  },
+  {
+    "date": "2026-04-17",
+    "opponent": "Texas A&M",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632825"
+  },
+  {
+    "date": "2026-04-18",
+    "opponent": "Texas A&M",
+    "time": "6:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632826"
+  },
+  {
+    "date": "2026-04-19",
+    "opponent": "Texas A&M",
+    "time": "7:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632827"
+  },
+  {
+    "date": "2026-04-21",
+    "opponent": "New Orleans",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632828"
+  },
+  {
+    "date": "2026-04-42",
+    "opponent": "Mississippi State",
+    "time": "6:00 PM",
+    "home": false,
+    "location": "Starkville, Miss",
+    "ballpark": "Dudy Noble Field at Polk-Dement Stadium",
+    "gameId": "633273"
+  },
+  {
+    "date": "2026-04-25",
+    "opponent": "Mississippi State",
+    "time": "6:30 PM",
+    "home": false,
+    "location": "Starkville, Miss",
+    "ballpark": "Dudy Noble Field at Polk-Dement Stadium",
+    "gameId": "633274"
+  },
+  {
+    "date": "2026-04-26",
+    "opponent": "Mississippi State",
+    "time": "1:00 PM",
+    "home": false,
+    "location": "Starkville, Miss",
+    "ballpark": "Dudy Noble Field at Polk-Dement Stadium",
+    "gameId": "633275"
+  },
+  {
+    "date": "2026-04-28",
+    "opponent": "Southeastern Louisiana",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632804"
+  },
+  {
+    "date": "2026-05-01",
+    "opponent": "South Carolina",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632794"
+  },
+  {
+    "date": "2026-05-02",
+    "opponent": "South Carolina",
+    "time": "6:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632795"
+  },
+  {
+    "date": "2026-05-03",
+    "opponent": "South Carolina",
+    "time": "2:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632796"
+  },
+  {
+    "date": "2026-05-5",
+    "opponent": "Tulane",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "630312"
+  },
+  {
+    "date": "2026-05-08",
+    "opponent": "Georgia",
+    "time": "5:00 PM",
+    "home": false,
+    "location": "Athens, Ga",
+    "ballpark": "Foley Field",
+    "gameId": "631903"
+  },
+  {
+    "date": "2026-05-09",
+    "opponent": "Georgia",
+    "time": "6:00 PM",
+    "home": false,
+    "location": "Athens, Ga",
+    "ballpark": "Foley Field",
+    "gameId": "631904"
+  },
+  {
+    "date": "2026-05-10",
+    "opponent": "Georgia",
+    "time": "2:00 PM",
+    "home": false,
+    "location": "Athens, Ga",
+    "ballpark": "Foley Field",
+    "gameId": "631905"
+  },
+  {
+    "date": "2026-05-15",
+    "opponent": "Florida",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632801"
+  },
+  {
+    "date": "2026-05-16",
+    "opponent": "Florida",
+    "time": "6:30 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632802"
+  },
+  {
+    "date": "2026-05-17",
+    "opponent": "Florida",
+    "time": "2:00 PM",
+    "home": true,
+    "location": "Baton Rouge, LA",
+    "ballpark": "Alex Box Stadium, Skip Bertman Field",
+    "gameId": "632803"
   }
 ]
