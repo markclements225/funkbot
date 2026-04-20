@@ -70,6 +70,7 @@ async function getAllLSUGameIDs() {
 /**
  * Get today's or recent LSU game IDs
  * Uses a config file for manual game IDs, otherwise checks today's date in schedule
+ * Returns array of objects with gameId and home status
  */
 async function getTodaysGameIDs() {
   try {
@@ -97,14 +98,17 @@ async function getTodaysGameIDs() {
       .toISOString()
       .split('T')[0];
 
-    // Find games for today
+    // Find games for today - return objects with gameId and home status
     const todaysGames = schedule
       .filter(game => game.date === todayStr)
-      .map(game => game.gameId);
+      .map(game => ({
+        gameId: game.gameId,
+        home: game.home
+      }));
 
     if (todaysGames.length > 0) {
       console.log(`   ✅ Found ${todaysGames.length} game(s) scheduled for today (${todayStr})`);
-      console.log(`   📊 Will monitor: ${todaysGames.join(', ')}`);
+      console.log(`   📊 Will monitor: ${todaysGames.map(g => `${g.gameId} (${g.home ? 'HOME' : 'AWAY'})`).join(', ')}`);
       return todaysGames;
     }
 
@@ -154,8 +158,10 @@ async function launchBrowser() {
 
 /**
  * Get game data from StatBroadcast using Puppeteer
+ * @param {string} gameId - The game ID
+ * @param {boolean} home - Whether LSU is the home team (if false, adds &vislive=lsu)
  */
-async function getGameData(gameId) {
+async function getGameData(gameId, home = true) {
   let page;
 
   try {
@@ -179,8 +185,12 @@ async function getGameData(gameId) {
     // Set a user agent
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
 
-    // Navigate to the game page
-    const url = `https://stats.statbroadcast.com/broadcast/?id=${gameId}`;
+    // Navigate to the game page - add &vislive=lsu for away games
+    let url = `https://stats.statbroadcast.com/broadcast/?id=${gameId}`;
+    if (!home) {
+      url += '&vislive=lsu';
+      console.log(`   🏃 Away game - adding vislive=lsu parameter`);
+    }
     console.log(`   Loading: ${url}`);
 
     await page.goto(url, {
@@ -432,13 +442,18 @@ function isLSUHomeRun(homeRunText, context = {}, allGameText = '', lsuIsHome = n
 
 /**
  * Get LSU home runs from multiple games
+ * @param {Array} gameIds - Array of game objects with gameId and home properties
  */
 async function checkForLSUHomeRuns(gameIds) {
   try {
     const allHomeRuns = [];
 
-    for (const gameId of gameIds) {
-      const gameData = await getGameData(gameId);
+    for (const game of gameIds) {
+      // Support both old format (string) and new format (object)
+      const gameId = typeof game === 'string' ? game : game.gameId;
+      const home = typeof game === 'string' ? true : game.home;
+
+      const gameData = await getGameData(gameId, home);
 
       if (!gameData) {
         console.log(`   ⚠️ No data for game ${gameId}`);
